@@ -7,7 +7,7 @@ import clientPromise from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
 interface User {
-  _id?: string;
+  _id?: ObjectId;
   email: string;
   password: string;
   role: 'admin' | 'superadmin';
@@ -25,23 +25,25 @@ async function getUsersCollection(): Promise<Collection<User>> {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const { id } = await params;
     
     if (!session || session.user.role !== 'superadmin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const collection = await getUsersCollection();
-    const user = await collection.findOne({ _id: new ObjectId(params.id) });
+    const user = await collection.findOne({ _id: new ObjectId(id) });
     
     if (!user) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
     // No devolver la contraseña
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
     
     return NextResponse.json({ user: userWithoutPassword });
@@ -55,10 +57,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const { id } = await params;
     
     if (!session || session.user.role !== 'superadmin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -70,7 +73,7 @@ export async function PUT(
     const collection = await getUsersCollection();
     
     // Verificar que el usuario existe
-    const existingUser = await collection.findOne({ _id: new ObjectId(params.id) });
+    const existingUser = await collection.findOne({ _id: new ObjectId(id) });
     if (!existingUser) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
@@ -79,7 +82,7 @@ export async function PUT(
     if (email) {
       const emailExists = await collection.findOne({ 
         email, 
-        _id: { $ne: new ObjectId(params.id) } 
+        _id: { $ne: new ObjectId(id) } 
       });
       if (emailExists) {
         return NextResponse.json({ error: 'El email ya está en uso' }, { status: 400 });
@@ -98,7 +101,7 @@ export async function PUT(
     }
 
     const result = await collection.updateOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(id) },
       { $set: updateData }
     );
 
@@ -106,7 +109,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    const updatedUser = await collection.findOne({ _id: new ObjectId(params.id) });
+    const updatedUser = await collection.findOne({ _id: new ObjectId(id) });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = updatedUser!;
 
     return NextResponse.json({ 
@@ -123,10 +127,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const { id } = await params;
     
     if (!session || session.user.role !== 'superadmin') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -135,7 +140,7 @@ export async function DELETE(
     const collection = await getUsersCollection();
     
     // Verificar que el usuario existe y no es el propio usuario que hace la petición
-    const userToDelete = await collection.findOne({ _id: new ObjectId(params.id) });
+    const userToDelete = await collection.findOne({ _id: new ObjectId(id) });
     if (!userToDelete) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
@@ -144,7 +149,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No puedes eliminarte a ti mismo' }, { status: 400 });
     }
 
-    const result = await collection.deleteOne({ _id: new ObjectId(params.id) });
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });

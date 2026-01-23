@@ -35,7 +35,7 @@ export class OrdenesService {
   }
 
   // Validar que el evento existe y pertenece al buffet
-  private static async validarEvento(evento_id: string, buffet_id: string, session?: Session | null): Promise<boolean> {
+  private static async validarEvento(evento_id: string, buffet_id: string): Promise<boolean> {
     try {
       const evento = await EventosService.obtenerEventoPorId(evento_id);
       return evento !== null && evento.buffet_id === buffet_id;
@@ -124,7 +124,7 @@ export class OrdenesService {
     }
 
     // Validar que el evento existe y pertenece al buffet
-    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id, session);
+    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id);
     if (!eventoValido) {
       throw new Error('El evento especificado no existe o no pertenece al buffet');
     }
@@ -380,8 +380,8 @@ export class OrdenesService {
       await collection.updateOne({ _id: objectId } as any, { $set: updateData });
       
       return await this.obtenerOrdenPorId(id, session);
-    } catch (error: any) {
-      if (error.message.includes('permisos')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes('permisos')) {
         throw error;
       }
       throw new Error('ID de orden inválido');
@@ -407,8 +407,8 @@ export class OrdenesService {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultado = await collection.deleteOne({ _id: objectId } as any);
       return resultado.deletedCount === 1;
-    } catch (error: any) {
-      if (error.message.includes('permisos') || error.message.includes('encontrada')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message.includes('permisos') || error.message.includes('encontrada'))) {
         throw error;
       }
       throw new Error('ID de orden inválido');
@@ -433,6 +433,26 @@ export class OrdenesService {
       .find({ evento_id })
       .sort({ fechaCreacion: -1 })
       .toArray();
+  }
+
+  // Validar permisos de usuario para un buffet específico
+  private static async validateUserPermissions(buffet_id: string | undefined, session: Session): Promise<void> {
+    if (!buffet_id) {
+      throw new Error('ID de buffet requerido para validar permisos');
+    }
+
+    // Verificar si el usuario es superadmin
+    if (session.user?.role === 'superadmin') {
+      return; // Superadmin tiene acceso a todo
+    }
+
+    // Verificar si el usuario es admin del buffet específico
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (session.user?.role === 'admin' && (session.user as any)?.buffet_id === buffet_id) {
+      return; // Admin del buffet tiene acceso
+    }
+
+    throw new Error('No tienes permisos para realizar esta acción en este buffet');
   }
 
   // Obtener estadísticas de órdenes

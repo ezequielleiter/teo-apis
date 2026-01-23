@@ -307,8 +307,8 @@ export class PromosService {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultado = await collection.deleteOne({ _id: objectId } as any);
       return resultado.deletedCount === 1;
-    } catch (error: any) {
-      if (error.message.includes('permisos') || error.message.includes('encontrada')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message.includes('permisos') || error.message.includes('encontrada'))) {
         throw error;
       }
       throw new Error('ID de promo inválido');
@@ -323,6 +323,26 @@ export class PromosService {
       .find({ buffet_id })
       .sort({ fechaCreacion: -1 })
       .toArray();
+  }
+
+  // Validar permisos de usuario para un buffet específico
+  private static async validateUserPermissions(buffet_id: string | undefined, session: Session): Promise<void> {
+    if (!buffet_id) {
+      throw new Error('ID de buffet requerido para validar permisos');
+    }
+
+    // Verificar si el usuario es superadmin
+    if (session.user?.role === 'superadmin') {
+      return; // Superadmin tiene acceso a todo
+    }
+
+    // Verificar si el usuario es admin del buffet específico
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (session.user?.role === 'admin' && (session.user as any)?.buffet_id === buffet_id) {
+      return; // Admin del buffet tiene acceso
+    }
+
+    throw new Error('No tienes permisos para realizar esta acción en este buffet');
   }
 }
 

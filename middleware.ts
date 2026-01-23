@@ -30,21 +30,26 @@ export async function middleware(request: NextRequest) {
     return createCorsResponse(response);
   }
 
-  // Agregar headers CORS a respuestas de API
+  // Permitir todas las peticiones de API que vengan de orígenes permitidos
   if (pathname.startsWith('/api/')) {
-    const response = NextResponse.next();
-    return createCorsResponse(response);
+    if (isOriginAllowed) {
+      const response = NextResponse.next();
+      return createCorsResponse(response);
+    } else {
+      // Bloquear peticiones de orígenes no permitidos
+      return new NextResponse(null, { status: 403 });
+    }
   }
 
   const token = await getToken({ req: request });
 
-  // Permitir acceso a rutas de inicialización sin restricciones
+  // Permitir acceso a rutas de inicialización sin restricciones adicionales
   if (pathname.startsWith('/api/auth/init-superadmin')) {
     const response = NextResponse.next();
     return createCorsResponse(response);
   }
 
-  // Permitir todas las rutas de NextAuth sin modificaciones adicionales
+  // Permitir todas las rutas de NextAuth
   if (pathname.startsWith('/api/auth/')) {
     const response = NextResponse.next();
     return createCorsResponse(response);
@@ -60,37 +65,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Para rutas de API que requieren autenticación, verificar inicialización
-  if (pathname.startsWith('/api/admin')) {
-    try {
-      // Verificar si el sistema está inicializado
-      const initResponse = await fetch(new URL('/api/auth/init-superadmin', request.url), {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (initResponse.ok) {
-        const initStatus = await initResponse.json();
-        
-        // Si no hay superadmin y no hay usuarios, el sistema necesita inicialización
-        if (initStatus.needsInitialization) {
-          const response = NextResponse.json(
-            { 
-              error: 'Sistema no inicializado',
-              needsInitialization: true,
-              initEndpoint: '/api/auth/init-superadmin'
-            },
-            { status: 503 }
-          );
-          return createCorsResponse(response);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking initialization status in middleware:', error);
-      // Continuar si no se puede verificar el estado
-    }
   }
 
   // Check if the user is trying to access admin routes
@@ -121,9 +95,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/api/:path*',
     '/admin/:path*', 
-    '/api/admin/:path*',
-    '/api/auth/:path*',
     '/dashboard/:path*',
     '/login',
     '/register'
