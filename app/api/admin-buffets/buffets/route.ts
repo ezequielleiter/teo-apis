@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const filtrosValidados = filtrarBuffetsSchema.parse(filtros);
 
     // Obtener buffets
-    const resultado = await BuffetsService.obtenerBuffets(filtrosValidados);
+    const resultado = await BuffetsService.obtenerBuffets(filtrosValidados, session);
 
     return NextResponse.json(resultado);
 
@@ -97,8 +97,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Agregar user_id del usuario actual
+    const bodyConUserId = {
+      ...body,
+      user_id: session.user.id
+    };
+    
     // Validar datos
-    const datosValidados = crearBuffetSchema.parse(body);
+    const datosValidados = crearBuffetSchema.parse(bodyConUserId);
 
     // Crear buffet
     const nuevoBuffet = await BuffetsService.crearBuffet(datosValidados);

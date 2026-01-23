@@ -3,6 +3,7 @@ import { z } from 'zod';
 // Schema para crear un producto
 export const crearProductoSchema = z.object({
   buffet_id: z.string().min(1, 'El ID del buffet es obligatorio'),
+  user_id: z.string().min(1, 'El ID del usuario es obligatorio'),
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   valor: z.number().min(0, 'El valor debe ser mayor o igual a 0'),
   descripcion: z.string().min(1, 'La descripción es obligatoria')
@@ -11,6 +12,7 @@ export const crearProductoSchema = z.object({
 // Schema para filtros de búsqueda
 export const filtrarProductosSchema = z.object({
   buffet_id: z.string().optional(),
+  user_id: z.string().optional(),
   nombre: z.string().optional(),
   valor_min: z.number().min(0).optional(),
   valor_max: z.number().min(0).optional(),
@@ -26,6 +28,7 @@ export type FiltrarProductosData = z.infer<typeof filtrarProductosSchema>;
 export interface Producto {
   _id?: string;
   buffet_id: string;
+  user_id: string;
   nombre: string;
   valor: number;
   descripcion: string;

@@ -1,6 +1,7 @@
 import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import { Buffet, CrearBuffetData, FiltrarBuffetsData } from '../types/buffets';
+import { addUserFilters } from './helpers/permissions';
 
 export class BuffetsService {
   private static async getCollection(): Promise<Collection<Buffet>> {
@@ -31,7 +32,10 @@ export class BuffetsService {
   }
 
   // Obtener todos los buffets con filtros opcionales
-  static async obtenerBuffets(filtros: FiltrarBuffetsData = {}): Promise<{
+  static async obtenerBuffets(
+    filtros: FiltrarBuffetsData = {},
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<{
     buffets: Buffet[];
     total: number;
     pagina: number;
@@ -40,7 +44,7 @@ export class BuffetsService {
     const collection = await this.getCollection();
     
     // Construir query de MongoDB
-    const query: Record<string, unknown> = {};
+    let query: Record<string, unknown> = {};
     
     if (filtros.nombre) {
       query.nombre = { $regex: filtros.nombre, $options: 'i' };
@@ -49,6 +53,13 @@ export class BuffetsService {
     if (filtros.lugar) {
       query.lugar = { $regex: filtros.lugar, $options: 'i' };
     }
+
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
+    }
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
 
     // Paginación
     const limite = filtros.limite || 20;
@@ -75,46 +86,71 @@ export class BuffetsService {
   }
 
   // Obtener un buffet por ID
-  static async obtenerBuffetPorId(id: string): Promise<Buffet | null> {
+  static async obtenerBuffetPorId(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<Buffet | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      return await collection.findOne({ _id: objectId } as unknown as Filter<Buffet>);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      return await collection.findOne(query as unknown as Filter<Buffet>);
     } catch {
       throw new Error('ID de buffet inválido');
     }
   }
 
   // Actualizar un buffet
-  static async actualizarBuffet(id: string, data: Partial<CrearBuffetData>): Promise<Buffet | null> {
+  static async actualizarBuffet(
+    id: string, 
+    data: Partial<CrearBuffetData>,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<Buffet | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
       const datosActualizacion = {
         ...data,
         fechaActualizacion: new Date()
       };
 
       await collection.updateOne(
-        { _id: objectId } as unknown as Filter<Buffet>,
+        query as unknown as Filter<Buffet>,
         { $set: datosActualizacion }
       );
 
-      return await collection.findOne({ _id: objectId } as unknown as Filter<Buffet>);
+      return await collection.findOne(query as unknown as Filter<Buffet>);
     } catch {
       throw new Error('ID de buffet inválido');
     }
   }
 
   // Eliminar un buffet
-  static async eliminarBuffet(id: string): Promise<boolean> {
+  static async eliminarBuffet(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      const resultado = await collection.deleteOne({ _id: objectId } as unknown as Filter<Buffet>);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      const resultado = await collection.deleteOne(query as unknown as Filter<Buffet>);
       return resultado.deletedCount === 1;
     } catch {
       throw new Error('ID de buffet inválido');

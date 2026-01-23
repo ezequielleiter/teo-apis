@@ -40,6 +40,10 @@ export async function GET(request: NextRequest) {
       filtros.nombre = searchParams.get('nombre');
     }
     
+    if (searchParams.get('user_id')) {
+      filtros.user_id = searchParams.get('user_id');
+    }
+    
     if (searchParams.get('valor_min')) {
       filtros.valor_min = parseFloat(searchParams.get('valor_min') || '0');
     }
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
     const filtrosValidados = filtrarPromosSchema.parse(filtros);
 
     // Obtener promos
-    const resultado = await PromosService.obtenerPromos(filtrosValidados);
+    const resultado = await PromosService.obtenerPromos(filtrosValidados, session);
 
     return NextResponse.json(resultado);
 
@@ -112,11 +116,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Agregar user_id del usuario actual
+    const bodyConUserId = {
+      ...body,
+      user_id: session.user.id
+    };
+    
     // Validar datos
-    const datosValidados = crearPromoSchema.parse(body);
+    const datosValidados = crearPromoSchema.parse(bodyConUserId);
 
     // Crear promo
-    const nuevaPromo = await PromosService.crearPromo(datosValidados);
+    const nuevaPromo = await PromosService.crearPromo(datosValidados, session);
 
     return NextResponse.json(
       { 

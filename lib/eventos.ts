@@ -1,7 +1,8 @@
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import { Evento, EventoConBuffet, CrearEventoData, FiltrarEventosData } from '../types/eventos';
 import { BuffetsService } from './buffets';
+import { addUserFilters } from './helpers/permissions';
 
 export class EventosService {
   private static async getCollection(): Promise<Collection<Evento>> {
@@ -11,9 +12,12 @@ export class EventosService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string): Promise<boolean> {
+  private static async validarBuffetExiste(
+    buffet_id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     try {
-      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
     } catch {
       return false;
@@ -21,11 +25,14 @@ export class EventosService {
   }
 
   // Crear un nuevo evento
-  static async crearEvento(data: CrearEventoData): Promise<EventoConBuffet> {
+  static async crearEvento(
+    data: CrearEventoData,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<EventoConBuffet> {
     // Validar que el buffet existe
-    const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+    const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
-      throw new Error('El buffet especificado no existe');
+      throw new Error('El buffet especificado no existe o no tienes permisos para acceder a él');
     }
 
     const collection = await this.getCollection();
@@ -33,6 +40,7 @@ export class EventosService {
     const nuevoEvento: Omit<Evento, '_id'> = {
       fecha: new Date(data.fecha),
       buffet_id: data.buffet_id,
+      user_id: data.user_id,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
@@ -46,7 +54,7 @@ export class EventosService {
     }
 
     // Obtener datos del buffet para retornar evento completo
-    const buffet = await BuffetsService.obtenerBuffetPorId(eventoCreado.buffet_id);
+    const buffet = await BuffetsService.obtenerBuffetPorId(eventoCreado.buffet_id, session);
     
     return {
       ...eventoCreado,
@@ -60,7 +68,10 @@ export class EventosService {
   }
 
   // Obtener todos los eventos con filtros opcionales
-  static async obtenerEventos(filtros: FiltrarEventosData = {}): Promise<{
+  static async obtenerEventos(
+    filtros: FiltrarEventosData = {},
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<{
     eventos: EventoConBuffet[];
     total: number;
     pagina: number;
@@ -69,7 +80,7 @@ export class EventosService {
     const collection = await this.getCollection();
     
     // Construir query de MongoDB
-    const query: Record<string, unknown> = {};
+    let query: Record<string, unknown> = {};
     
     if (filtros.buffet_id) {
       try {
@@ -77,6 +88,10 @@ export class EventosService {
       } catch {
         throw new Error('ID de buffet inválido');
       }
+    }
+
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
     }
     
     if (filtros.fecha_desde || filtros.fecha_hasta) {
@@ -88,6 +103,9 @@ export class EventosService {
         (query.fecha as Record<string, Date>).$lte = new Date(filtros.fecha_hasta);
       }
     }
+
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
 
     // Paginación
     const limite = filtros.limite || 20;
@@ -108,7 +126,7 @@ export class EventosService {
     // Obtener datos de buffets para cada evento
     const eventosConBuffets: EventoConBuffet[] = await Promise.all(
       eventos.map(async (evento) => {
-        const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id);
+        const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id, session);
         return {
           ...evento,
           buffet: buffet ? {
@@ -130,20 +148,27 @@ export class EventosService {
   }
 
   // Obtener un evento por ID
-  static async obtenerEventoPorId(id: string): Promise<EventoConBuffet | null> {
+  static async obtenerEventoPorId(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<EventoConBuffet | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const evento = await collection.findOne({ _id: objectId } as any);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      const evento = await collection.findOne(query as unknown as Filter<Evento>);
       
       if (!evento) {
         return null;
       }
 
       // Obtener datos del buffet
-      const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id, session);
       
       return {
         ...evento,
@@ -160,12 +185,16 @@ export class EventosService {
   }
 
   // Actualizar un evento
-  static async actualizarEvento(id: string, data: Partial<CrearEventoData>): Promise<EventoConBuffet | null> {
+  static async actualizarEvento(
+    id: string, 
+    data: Partial<CrearEventoData>,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<EventoConBuffet | null> {
     // Si se está actualizando el buffet_id, validar que existe
     if (data.buffet_id) {
-      const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+      const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
       if (!buffetExiste) {
-        throw new Error('El buffet especificado no existe');
+        throw new Error('El buffet especificado no existe o no tienes permisos para acceder a él');
       }
     }
 
@@ -173,6 +202,11 @@ export class EventosService {
     
     try {
       const objectId = new ObjectId(id);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
       const datosActualizacion: Record<string, unknown> = {
         fechaActualizacion: new Date()
       };
@@ -183,27 +217,36 @@ export class EventosService {
       if (data.buffet_id) {
         datosActualizacion.buffet_id = data.buffet_id;
       }
+      if (data.user_id) {
+        datosActualizacion.user_id = data.user_id;
+      }
 
       await collection.updateOne(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { _id: objectId } as unknown as any,
+        query as unknown as Filter<Evento>,
         { $set: datosActualizacion }
       );
 
-      return await this.obtenerEventoPorId(id);
+      return await this.obtenerEventoPorId(id, session);
     } catch {
       throw new Error('ID de evento inválido');
     }
   }
 
   // Eliminar un evento
-  static async eliminarEvento(id: string): Promise<boolean> {
+  static async eliminarEvento(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultado = await collection.deleteOne({ _id: objectId } as any);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      const resultado = await collection.deleteOne(query as unknown as Filter<Evento>);
       return resultado.deletedCount === 1;
     } catch {
       throw new Error('ID de evento inválido');
@@ -211,11 +254,19 @@ export class EventosService {
   }
 
   // Obtener eventos por buffet
-  static async obtenerEventosPorBuffet(buffet_id: string): Promise<Evento[]> {
+  static async obtenerEventosPorBuffet(
+    buffet_id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<Evento[]> {
     const collection = await this.getCollection();
     
+    let query: Record<string, unknown> = { buffet_id };
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
+    
     return await collection
-      .find({ buffet_id })
+      .find(query)
       .sort({ fecha: 1 })
       .toArray();
   }

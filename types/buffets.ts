@@ -4,13 +4,15 @@ import { z } from 'zod';
 export const crearBuffetSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   lugar: z.string().min(1, 'El lugar es obligatorio'),
-  descripcion: z.string().min(1, 'La descripción es obligatoria')
+  descripcion: z.string().min(1, 'La descripción es obligatoria'),
+  user_id: z.string().min(1, 'El ID del usuario es obligatorio')
 });
 
 // Schema para filtros de búsqueda
 export const filtrarBuffetsSchema = z.object({
   nombre: z.string().optional(),
   lugar: z.string().optional(),
+  user_id: z.string().optional(),
   limite: z.number().min(1).max(100).optional(),
   pagina: z.number().min(1).optional()
 });
@@ -25,6 +27,7 @@ export interface Buffet {
   nombre: string;
   lugar: string;
   descripcion: string;
+  user_id: string;
   fechaCreacion: Date;
   fechaActualizacion: Date;
 }

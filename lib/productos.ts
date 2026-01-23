@@ -1,7 +1,8 @@
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import { Producto, ProductoConBuffet, CrearProductoData, FiltrarProductosData } from '../types/productos';
 import { BuffetsService } from './buffets';
+import { addUserFilters } from './helpers/permissions';
 
 export class ProductosService {
   private static async getCollection(): Promise<Collection<Producto>> {
@@ -11,9 +12,12 @@ export class ProductosService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string): Promise<boolean> {
+  private static async validarBuffetExiste(
+    buffet_id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     try {
-      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
     } catch {
       return false;
@@ -21,17 +25,21 @@ export class ProductosService {
   }
 
   // Crear un nuevo producto
-  static async crearProducto(data: CrearProductoData): Promise<ProductoConBuffet> {
+  static async crearProducto(
+    data: CrearProductoData,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<ProductoConBuffet> {
     // Validar que el buffet existe
-    const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+    const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
-      throw new Error('El buffet especificado no existe');
+      throw new Error('El buffet especificado no existe o no tienes permisos para acceder a él');
     }
 
     const collection = await this.getCollection();
     
     const nuevoProducto: Omit<Producto, '_id'> = {
       buffet_id: data.buffet_id,
+      user_id: data.user_id,
       nombre: data.nombre,
       valor: data.valor,
       descripcion: data.descripcion,
@@ -48,7 +56,7 @@ export class ProductosService {
     }
 
     // Obtener datos del buffet para retornar producto completo
-    const buffet = await BuffetsService.obtenerBuffetPorId(productoCreado.buffet_id);
+    const buffet = await BuffetsService.obtenerBuffetPorId(productoCreado.buffet_id, session);
     
     return {
       ...productoCreado,
@@ -62,7 +70,10 @@ export class ProductosService {
   }
 
   // Obtener todos los productos con filtros opcionales
-  static async obtenerProductos(filtros: FiltrarProductosData = {}): Promise<{
+  static async obtenerProductos(
+    filtros: FiltrarProductosData = {},
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<{
     productos: ProductoConBuffet[];
     total: number;
     pagina: number;
@@ -71,10 +82,14 @@ export class ProductosService {
     const collection = await this.getCollection();
     
     // Construir query de MongoDB
-    const query: Record<string, unknown> = {};
+    let query: Record<string, unknown> = {};
     
     if (filtros.buffet_id) {
       query.buffet_id = filtros.buffet_id;
+    }
+
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
     }
     
     if (filtros.nombre) {
@@ -90,6 +105,9 @@ export class ProductosService {
         (query.valor as Record<string, number>).$lte = filtros.valor_max;
       }
     }
+
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
 
     // Paginación
     const limite = filtros.limite || 20;
@@ -110,7 +128,7 @@ export class ProductosService {
     // Obtener datos de buffets para cada producto
     const productosConBuffets: ProductoConBuffet[] = await Promise.all(
       productos.map(async (producto) => {
-        const buffet = await BuffetsService.obtenerBuffetPorId(producto.buffet_id);
+        const buffet = await BuffetsService.obtenerBuffetPorId(producto.buffet_id, session);
         return {
           ...producto,
           buffet: buffet ? {
@@ -132,20 +150,27 @@ export class ProductosService {
   }
 
   // Obtener un producto por ID
-  static async obtenerProductoPorId(id: string): Promise<ProductoConBuffet | null> {
+  static async obtenerProductoPorId(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<ProductoConBuffet | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const producto = await collection.findOne({ _id: objectId } as any);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      const producto = await collection.findOne(query as unknown as Filter<Producto>);
       
       if (!producto) {
         return null;
       }
 
       // Obtener datos del buffet
-      const buffet = await BuffetsService.obtenerBuffetPorId(producto.buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(producto.buffet_id, session);
       
       return {
         ...producto,
@@ -162,12 +187,16 @@ export class ProductosService {
   }
 
   // Actualizar un producto
-  static async actualizarProducto(id: string, data: Partial<CrearProductoData>): Promise<ProductoConBuffet | null> {
+  static async actualizarProducto(
+    id: string, 
+    data: Partial<CrearProductoData>,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<ProductoConBuffet | null> {
     // Si se está actualizando el buffet_id, validar que existe
     if (data.buffet_id) {
-      const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+      const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
       if (!buffetExiste) {
-        throw new Error('El buffet especificado no existe');
+        throw new Error('El buffet especificado no existe o no tienes permisos para acceder a él');
       }
     }
 
@@ -175,31 +204,42 @@ export class ProductosService {
     
     try {
       const objectId = new ObjectId(id);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
       const datosActualizacion: Record<string, unknown> = {
         ...data,
         fechaActualizacion: new Date()
       };
 
       await collection.updateOne(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { _id: objectId } as unknown as any,
+        query as unknown as Filter<Producto>,
         { $set: datosActualizacion }
       );
 
-      return await this.obtenerProductoPorId(id);
+      return await this.obtenerProductoPorId(id, session);
     } catch {
       throw new Error('ID de producto inválido');
     }
   }
 
   // Eliminar un producto
-  static async eliminarProducto(id: string): Promise<boolean> {
+  static async eliminarProducto(
+    id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultado = await collection.deleteOne({ _id: objectId } as any);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
+      const resultado = await collection.deleteOne(query as unknown as Filter<Producto>);
       return resultado.deletedCount === 1;
     } catch {
       throw new Error('ID de producto inválido');
@@ -207,17 +247,28 @@ export class ProductosService {
   }
 
   // Obtener productos por buffet
-  static async obtenerProductosPorBuffet(buffet_id: string): Promise<Producto[]> {
+  static async obtenerProductosPorBuffet(
+    buffet_id: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<Producto[]> {
     const collection = await this.getCollection();
     
+    let query: Record<string, unknown> = { buffet_id };
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
+    
     return await collection
-      .find({ buffet_id })
+      .find(query)
       .sort({ nombre: 1 })
       .toArray();
   }
 
   // Obtener estadísticas de productos por buffet
-  static async obtenerEstadisticasProductos(buffet_id?: string): Promise<{
+  static async obtenerEstadisticasProductos(
+    buffet_id?: string,
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<{
     totalProductos: number;
     valorPromedio: number;
     valorMinimo: number;
@@ -225,7 +276,10 @@ export class ProductosService {
   }> {
     const collection = await this.getCollection();
     
-    const query = buffet_id ? { buffet_id } : {};
+    let query: Record<string, unknown> = buffet_id ? { buffet_id } : {};
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
     
     const pipeline = [
       { $match: query },

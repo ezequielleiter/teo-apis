@@ -60,6 +60,10 @@ export async function GET(request: NextRequest) {
       filtros.nota = searchParams.get('nota');
     }
     
+    if (searchParams.get('user_id')) {
+      filtros.user_id = searchParams.get('user_id');
+    }
+    
     if (searchParams.get('fecha_desde')) {
       filtros.fecha_desde = searchParams.get('fecha_desde');
     }
@@ -88,7 +92,7 @@ export async function GET(request: NextRequest) {
     const filtrosValidados = filtrarOrdenesSchema.parse(filtros);
 
     // Obtener órdenes
-    const resultado = await OrdenesService.obtenerOrdenes(filtrosValidados);
+    const resultado = await OrdenesService.obtenerOrdenes(filtrosValidados, session);
 
     return NextResponse.json(resultado);
 
@@ -140,11 +144,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Agregar user_id del usuario actual
+    const bodyConUserId = {
+      ...body,
+      user_id: session.user.id
+    };
+    
     // Validar datos
-    const datosValidados = crearOrdenSchema.parse(body);
+    const datosValidados = crearOrdenSchema.parse(bodyConUserId);
 
     // Crear orden
-    const nuevaOrden = await OrdenesService.crearOrden(datosValidados);
+    const nuevaOrden = await OrdenesService.crearOrden(datosValidados, session);
 
     return NextResponse.json(
       { 

@@ -35,6 +35,10 @@ export async function GET(request: NextRequest) {
     if (searchParams.get('buffet_id')) {
       filtros.buffet_id = searchParams.get('buffet_id');
     }
+
+    if (searchParams.get('user_id')) {
+      filtros.user_id = searchParams.get('user_id');
+    }
     
     if (searchParams.get('nombre')) {
       filtros.nombre = searchParams.get('nombre');
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
     const filtrosValidados = filtrarProductosSchema.parse(filtros);
 
     // Obtener productos
-    const resultado = await ProductosService.obtenerProductos(filtrosValidados);
+    const resultado = await ProductosService.obtenerProductos(filtrosValidados, session);
 
     return NextResponse.json(resultado);
 
@@ -112,11 +116,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Agregar user_id del usuario actual
+    const bodyConUserId = {
+      ...body,
+      user_id: session.user.id
+    };
+    
     // Validar datos
-    const datosValidados = crearProductoSchema.parse(body);
+    const datosValidados = crearProductoSchema.parse(bodyConUserId);
 
     // Crear producto
-    const nuevoProducto = await ProductosService.crearProducto(datosValidados);
+    const nuevoProducto = await ProductosService.crearProducto(datosValidados, session);
 
     return NextResponse.json(
       { 

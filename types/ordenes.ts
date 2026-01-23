@@ -25,6 +25,7 @@ export const itemProductoSchema = z.object({
 export const crearOrdenSchema = z.object({
   buffet_id: z.string().min(1, 'El ID del buffet es obligatorio'),
   evento_id: z.string().min(1, 'El ID del evento es obligatorio'),
+  user_id: z.string().min(1, 'El ID del usuario es obligatorio'),
   productos: z.array(itemProductoSchema).min(1, 'Debe incluir al menos un producto o promo'),
   total: z.number().min(0, 'El total debe ser mayor o igual a 0'),
   forma_pago: z.nativeEnum(FormaPago),
@@ -36,6 +37,7 @@ export const crearOrdenSchema = z.object({
 export const filtrarOrdenesSchema = z.object({
   buffet_id: z.string().optional(),
   evento_id: z.string().optional(),
+  user_id: z.string().optional(),
   estado: z.nativeEnum(EstadoOrden).optional(),
   forma_pago: z.nativeEnum(FormaPago).optional(),
   nota: z.string().optional(),
@@ -63,6 +65,7 @@ export interface Orden {
   _id?: string;
   buffet_id: string;
   evento_id: string;
+  user_id: string;
   productos: ItemProducto[];
   productosExpandidos: ProductoExpandido[]; // Productos con detalles expandidos
   total: number;

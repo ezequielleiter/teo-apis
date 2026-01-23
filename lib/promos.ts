@@ -1,8 +1,10 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { Session } from 'next-auth';
 import clientPromise from './mongodb';
 import { Promo, PromoConDetalles, CrearPromoData, FiltrarPromosData } from '../types/promos';
 import { BuffetsService } from './buffets';
 import { ProductosService } from './productos';
+import { addUserFilters } from './helpers/permissions';
 
 export class PromosService {
   private static async getCollection(): Promise<Collection<Promo>> {
@@ -12,9 +14,9 @@ export class PromosService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string): Promise<boolean> {
+  private static async validarBuffetExiste(buffet_id: string, session?: Session | null): Promise<boolean> {
     try {
-      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
     } catch {
       return false;
@@ -54,9 +56,9 @@ export class PromosService {
   }
 
   // Crear una nueva promo
-  static async crearPromo(data: CrearPromoData): Promise<PromoConDetalles> {
+  static async crearPromo(data: CrearPromoData, session?: Session | null): Promise<PromoConDetalles> {
     // Validar que el buffet existe
-    const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+    const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
       throw new Error('El buffet especificado no existe');
     }
@@ -74,6 +76,7 @@ export class PromosService {
       nombre: data.nombre,
       productos: data.productos,
       valor: data.valor,
+      user_id: data.user_id,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
@@ -110,7 +113,10 @@ export class PromosService {
   }
 
   // Obtener todas las promos con filtros opcionales
-  static async obtenerPromos(filtros: FiltrarPromosData = {}): Promise<{
+  static async obtenerPromos(
+    filtros: FiltrarPromosData = {},
+    session?: Session | null
+  ): Promise<{
     promos: PromoConDetalles[];
     total: number;
     pagina: number;
@@ -119,7 +125,7 @@ export class PromosService {
     const collection = await this.getCollection();
     
     // Construir query de MongoDB
-    const query: Record<string, unknown> = {};
+    let query: Record<string, unknown> = {};
     
     if (filtros.buffet_id) {
       query.buffet_id = filtros.buffet_id;
@@ -127,6 +133,10 @@ export class PromosService {
     
     if (filtros.nombre) {
       query.nombre = { $regex: filtros.nombre, $options: 'i' };
+    }
+    
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
     }
     
     if (filtros.valor_min !== undefined || filtros.valor_max !== undefined) {
@@ -138,6 +148,9 @@ export class PromosService {
         (query.valor as Record<string, number>).$lte = filtros.valor_max;
       }
     }
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
 
     // Paginación
     const limite = filtros.limite || 20;
@@ -190,13 +203,18 @@ export class PromosService {
   }
 
   // Obtener una promo por ID
-  static async obtenerPromoPorId(id: string): Promise<PromoConDetalles | null> {
+  static async obtenerPromoPorId(id: string, session?: Session | null): Promise<PromoConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const promo = await collection.findOne({ _id: objectId } as any);
+      const promo = await collection.findOne(query as any);
       
       if (!promo) {
         return null;
@@ -204,7 +222,7 @@ export class PromosService {
 
       // Obtener datos del buffet y productos
       const [buffet, productosDetalles] = await Promise.all([
-        BuffetsService.obtenerBuffetPorId(promo.buffet_id),
+        BuffetsService.obtenerBuffetPorId(promo.buffet_id, session),
         this.obtenerDetallesProductos(promo.productos)
       ]);
 
@@ -229,10 +247,10 @@ export class PromosService {
   }
 
   // Actualizar una promo
-  static async actualizarPromo(id: string, data: Partial<CrearPromoData>): Promise<PromoConDetalles | null> {
+  static async actualizarPromo(id: string, data: Partial<CrearPromoData>, session?: Session | null): Promise<PromoConDetalles | null> {
     // Si se está actualizando el buffet_id, validar que existe
     if (data.buffet_id) {
-      const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+      const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
       if (!buffetExiste) {
         throw new Error('El buffet especificado no existe');
       }
@@ -240,7 +258,7 @@ export class PromosService {
 
     // Si se están actualizando productos, validar que existen y pertenecen al buffet
     if (data.productos) {
-      const buffet_id = data.buffet_id || (await this.obtenerPromoPorId(id))?.buffet_id;
+      const buffet_id = data.buffet_id || (await this.obtenerPromoPorId(id, session))?.buffet_id;
       if (buffet_id) {
         const productosValidos = await this.validarProductos(buffet_id, data.productos);
         if (!productosValidos) {
@@ -264,7 +282,7 @@ export class PromosService {
         { $set: datosActualizacion }
       );
 
-      return await this.obtenerPromoPorId(id);
+      return await this.obtenerPromoPorId(id, session);
     } catch {
       throw new Error('ID de promo inválido');
     }

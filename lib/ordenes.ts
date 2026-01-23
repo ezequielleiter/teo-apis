@@ -1,4 +1,5 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { Session } from 'next-auth';
 import clientPromise from './mongodb';
 import { 
   Orden, 
@@ -14,6 +15,7 @@ import { BuffetsService } from './buffets';
 import { EventosService } from './eventos';
 import { ProductosService } from './productos';
 import { PromosService } from './promos';
+import { addUserFilters } from './helpers/permissions';
 
 export class OrdenesService {
   private static async getCollection(): Promise<Collection<Orden>> {
@@ -23,9 +25,9 @@ export class OrdenesService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string): Promise<boolean> {
+  private static async validarBuffetExiste(buffet_id: string, session?: Session | null): Promise<boolean> {
     try {
-      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
     } catch {
       return false;
@@ -33,7 +35,7 @@ export class OrdenesService {
   }
 
   // Validar que el evento existe y pertenece al buffet
-  private static async validarEvento(evento_id: string, buffet_id: string): Promise<boolean> {
+  private static async validarEvento(evento_id: string, buffet_id: string, session?: Session | null): Promise<boolean> {
     try {
       const evento = await EventosService.obtenerEventoPorId(evento_id);
       return evento !== null && evento.buffet_id === buffet_id;
@@ -43,7 +45,7 @@ export class OrdenesService {
   }
 
   // Expandir productos de una orden (incluye productos de promos)
-  private static async expandirProductos(productos: ItemProducto[]): Promise<ProductoExpandido[]> {
+  private static async expandirProductos(productos: ItemProducto[], session?: Session | null): Promise<ProductoExpandido[]> {
     const productosExpandidos: ProductoExpandido[] = [];
 
     for (const item of productos) {
@@ -67,7 +69,7 @@ export class OrdenesService {
         }
       } else if (item.tipo === 'promo') {
         // Promo - expandir todos los productos que la componen
-        const promo = await PromosService.obtenerPromoPorId(item.id);
+        const promo = await PromosService.obtenerPromoPorId(item.id, session);
         if (promo && promo.productosDetalles) {
           for (const productoPromo of promo.productosDetalles) {
             productosExpandidos.push({
@@ -92,7 +94,7 @@ export class OrdenesService {
   }
 
   // Validar productos y promos de una orden
-  private static async validarProductosYPromos(buffet_id: string, productos: ItemProducto[]): Promise<boolean> {
+  private static async validarProductosYPromos(buffet_id: string, productos: ItemProducto[], session?: Session | null): Promise<boolean> {
     try {
       for (const item of productos) {
         if (item.tipo === 'producto') {
@@ -101,7 +103,7 @@ export class OrdenesService {
             return false;
           }
         } else if (item.tipo === 'promo') {
-          const promo = await PromosService.obtenerPromoPorId(item.id);
+          const promo = await PromosService.obtenerPromoPorId(item.id, session);
           if (!promo || promo.buffet_id !== buffet_id) {
             return false;
           }
@@ -114,27 +116,27 @@ export class OrdenesService {
   }
 
   // Crear una nueva orden
-  static async crearOrden(data: CrearOrdenData): Promise<OrdenConDetalles> {
+  static async crearOrden(data: CrearOrdenData, session?: Session | null): Promise<OrdenConDetalles> {
     // Validar que el buffet existe
-    const buffetExiste = await this.validarBuffetExiste(data.buffet_id);
+    const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
       throw new Error('El buffet especificado no existe');
     }
 
     // Validar que el evento existe y pertenece al buffet
-    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id);
+    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id, session);
     if (!eventoValido) {
       throw new Error('El evento especificado no existe o no pertenece al buffet');
     }
 
     // Validar que todos los productos/promos existen y pertenecen al buffet
-    const productosValidos = await this.validarProductosYPromos(data.buffet_id, data.productos);
+    const productosValidos = await this.validarProductosYPromos(data.buffet_id, data.productos, session);
     if (!productosValidos) {
       throw new Error('Uno o más productos/promos no existen o no pertenecen al buffet especificado');
     }
 
     // Expandir productos (incluir productos de promos)
-    const productosExpandidos = await this.expandirProductos(data.productos);
+    const productosExpandidos = await this.expandirProductos(data.productos, session);
 
     const collection = await this.getCollection();
     
@@ -147,6 +149,7 @@ export class OrdenesService {
       forma_pago: data.forma_pago,
       nota: data.nota,
       estado: data.estado,
+      user_id: data.user_id,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
@@ -161,7 +164,7 @@ export class OrdenesService {
 
     // Obtener datos del buffet y evento para retornar orden completa
     const [buffet, evento] = await Promise.all([
-      BuffetsService.obtenerBuffetPorId(ordenCreada.buffet_id),
+      BuffetsService.obtenerBuffetPorId(ordenCreada.buffet_id, session),
       EventosService.obtenerEventoPorId(ordenCreada.evento_id)
     ]);
     
@@ -181,7 +184,10 @@ export class OrdenesService {
   }
 
   // Obtener todas las órdenes con filtros opcionales
-  static async obtenerOrdenes(filtros: FiltrarOrdenesData = {}): Promise<{
+  static async obtenerOrdenes(
+    filtros: FiltrarOrdenesData = {},
+    session?: Session | null
+  ): Promise<{
     ordenes: OrdenConDetalles[];
     total: number;
     pagina: number;
@@ -190,7 +196,7 @@ export class OrdenesService {
     const collection = await this.getCollection();
     
     // Construir query de MongoDB
-    const query: Record<string, unknown> = {};
+    let query: Record<string, unknown> = {};
     
     if (filtros.buffet_id) {
       query.buffet_id = filtros.buffet_id;
@@ -212,6 +218,10 @@ export class OrdenesService {
       query.nota = { $regex: filtros.nota, $options: 'i' };
     }
     
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
+    }
+    
     if (filtros.fecha_desde || filtros.fecha_hasta) {
       query.fechaCreacion = {} as Record<string, Date>;
       if (filtros.fecha_desde) {
@@ -231,6 +241,9 @@ export class OrdenesService {
         (query.total as Record<string, number>).$lte = filtros.total_max;
       }
     }
+    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
 
     // Paginación
     const limite = filtros.limite || 20;
@@ -252,7 +265,7 @@ export class OrdenesService {
     const ordenesConDetalles: OrdenConDetalles[] = await Promise.all(
       ordenes.map(async (orden) => {
         const [buffet, evento] = await Promise.all([
-          BuffetsService.obtenerBuffetPorId(orden.buffet_id),
+          BuffetsService.obtenerBuffetPorId(orden.buffet_id, session),
           EventosService.obtenerEventoPorId(orden.evento_id)
         ]);
 
@@ -281,13 +294,18 @@ export class OrdenesService {
   }
 
   // Obtener una orden por ID
-  static async obtenerOrdenPorId(id: string): Promise<OrdenConDetalles | null> {
+  static async obtenerOrdenPorId(id: string, session?: Session | null): Promise<OrdenConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
+      let query: Record<string, unknown> = { _id: objectId };
+      
+      // Aplicar filtros de usuario según permisos
+      query = addUserFilters(session || null, query);
+      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const orden = await collection.findOne({ _id: objectId } as any);
+      const orden = await collection.findOne(query as any);
       
       if (!orden) {
         return null;
@@ -295,7 +313,7 @@ export class OrdenesService {
 
       // Obtener datos del buffet y evento
       const [buffet, evento] = await Promise.all([
-        BuffetsService.obtenerBuffetPorId(orden.buffet_id),
+        BuffetsService.obtenerBuffetPorId(orden.buffet_id, session),
         EventosService.obtenerEventoPorId(orden.evento_id)
       ]);
       
@@ -318,7 +336,7 @@ export class OrdenesService {
   }
 
   // Actualizar estado de una orden
-  static async actualizarEstadoOrden(id: string, data: ActualizarEstadoOrdenData): Promise<OrdenConDetalles | null> {
+  static async actualizarEstadoOrden(id: string, data: ActualizarEstadoOrdenData, session?: Session | null): Promise<OrdenConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
@@ -334,7 +352,7 @@ export class OrdenesService {
         { $set: datosActualizacion }
       );
 
-      return await this.obtenerOrdenPorId(id);
+      return await this.obtenerOrdenPorId(id, session);
     } catch {
       throw new Error('ID de orden inválido');
     }

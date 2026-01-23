@@ -4,12 +4,14 @@ import { ObjectId } from 'mongodb';
 // Schema para crear un evento
 export const crearEventoSchema = z.object({
   fecha: z.string().datetime('La fecha debe ser válida en formato ISO'),
-  buffet_id: z.string().min(1, 'El ID del buffet es obligatorio')
+  buffet_id: z.string().min(1, 'El ID del buffet es obligatorio'),
+  user_id: z.string().min(1, 'El ID del usuario es obligatorio')
 });
 
 // Schema para filtros de búsqueda
 export const filtrarEventosSchema = z.object({
   buffet_id: z.string().optional(),
+  user_id: z.string().optional(),
   fecha_desde: z.string().datetime().optional(),
   fecha_hasta: z.string().datetime().optional(),
   limite: z.number().min(1).max(100).optional(),
@@ -25,6 +27,7 @@ export interface Evento {
   _id?: string;
   fecha: Date;
   buffet_id: string;
+  user_id: string;
   fechaCreacion: Date;
   fechaActualizacion: Date;
 }
