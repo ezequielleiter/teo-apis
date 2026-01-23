@@ -3,10 +3,23 @@ import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const token = await getToken({ req: request });
 
   // Permitir acceso a rutas de inicialización sin restricciones
   if (pathname.startsWith('/api/auth/init-superadmin')) {
     return NextResponse.next();
+  }
+
+  // Rutas de autenticación - redirigir si ya está autenticado
+  if ((pathname === '/login' || pathname === '/register') && token) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Rutas protegidas - redirigir si no está autenticado
+  if (pathname.startsWith('/dashboard') && !token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Para rutas de API que requieren autenticación, verificar inicialización
@@ -63,5 +76,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/api/auth/:path*']
+  matcher: [
+    '/admin/:path*', 
+    '/api/admin/:path*', 
+    '/api/auth/:path*',
+    '/dashboard/:path*',
+    '/login',
+    '/register'
+  ]
 };
