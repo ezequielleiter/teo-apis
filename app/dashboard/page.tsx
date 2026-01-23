@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -182,6 +184,29 @@ export default function DashboardPage() {
   });
   const [createUserError, setCreateUserError] = useState('');
   const [createUserSuccess, setCreateUserSuccess] = useState('');
+
+  // Modal states for buffet
+  const [showCreateBuffetModal, setShowCreateBuffetModal] = useState(false);
+  const [isCreatingBuffet, setIsCreatingBuffet] = useState(false);
+  const [createBuffetForm, setCreateBuffetForm] = useState({
+    nombre: '',
+    lugar: '',
+    descripcion: '',
+    user_id: ''
+  });
+  const [createBuffetError, setCreateBuffetError] = useState('');
+  const [createBuffetSuccess, setCreateBuffetSuccess] = useState('');
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+
+  // Edit and Delete states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [editForm, setEditForm] = useState<Record<string, any>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -695,12 +720,18 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(user.createdAt)}</td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(user)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(user)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -720,12 +751,18 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(buffet.fechaCreacion)}</td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(buffet)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(buffet)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -745,12 +782,18 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(evento.fecha_inicio)}</td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(evento)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(evento)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -781,12 +824,18 @@ export default function DashboardPage() {
             </td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(producto)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(producto)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -806,12 +855,18 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(promo.fecha_inicio)}</td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(promo)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(promo)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -835,12 +890,18 @@ export default function DashboardPage() {
             </td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
-                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                <button 
+                  onClick={() => openEditModal(orden)}
+                  className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
                   </svg>
                 </button>
-                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                <button 
+                  onClick={() => openDeleteModal(orden)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all"
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                   </svg>
@@ -1024,6 +1085,247 @@ export default function DashboardPage() {
     }));
   };
 
+  // Funciones del modal de crear buffet
+  const fetchAdminUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        // Filtrar solo usuarios admin
+        const admins = data.users?.filter((user: User) => user.role === 'admin') || [];
+        setAdminUsers(admins);
+      }
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
+  };
+
+  const handleCreateBuffetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingBuffet(true);
+    setCreateBuffetError('');
+    setCreateBuffetSuccess('');
+
+    try {
+      // Si es admin, usar su propio ID; si es superadmin, usar el seleccionado
+      const buffetData = {
+        ...createBuffetForm,
+        user_id: session?.user?.role === 'admin' ? session.user.id : createBuffetForm.user_id
+      };
+
+      const response = await fetch('/api/admin-buffets/buffets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(buffetData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCreateBuffetSuccess('Buffet creado exitosamente');
+        setCreateBuffetForm({ 
+          nombre: '', 
+          lugar: '', 
+          descripcion: '', 
+          user_id: session?.user?.role === 'admin' ? session.user.id : ''
+        });
+        
+        // Refrescar la lista de buffets si estamos en esa vista
+        if (selectedApi === 'Buffets') {
+          fetchBuffets();
+        }
+        // Cerrar modal después de 2 segundos
+        setTimeout(() => {
+          setShowCreateBuffetModal(false);
+          setCreateBuffetSuccess('');
+        }, 2000);
+      } else {
+        setCreateBuffetError(data.error || 'Error al crear buffet');
+      }
+    } catch (error) {
+      console.error('Error creating buffet:', error);
+      setCreateBuffetError('Error interno del servidor');
+    } finally {
+      setIsCreatingBuffet(false);
+    }
+  };
+
+  // Delete handler for all resource types
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      let endpoint = '';
+      const resourceId = selectedItem._id;
+
+      switch (selectedApi) {
+        case 'Get Users':
+          endpoint = `/api/admin/users/${resourceId}`;
+          break;
+        case 'Buffets':
+          endpoint = `/api/admin-buffets/buffets/${resourceId}`;
+          break;
+        case 'Eventos':
+          endpoint = `/api/admin-buffets/eventos/${resourceId}`;
+          break;
+        case 'Productos':
+          endpoint = `/api/admin-buffets/productos/${resourceId}`;
+          break;
+        case 'Promos':
+          endpoint = `/api/admin-buffets/promos/${resourceId}`;
+          break;
+        case 'Ordenes':
+          endpoint = `/api/admin-buffets/ordenes/${resourceId}`;
+          break;
+        default:
+          throw new Error('Tipo de recurso no válido');
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        // Refresh the appropriate list
+        switch (selectedApi) {
+          case 'Get Users':
+            fetchUsers();
+            break;
+          case 'Buffets':
+            fetchBuffets();
+            break;
+          case 'Eventos':
+            fetchEventos();
+            break;
+          case 'Productos':
+            fetchProductos();
+            break;
+          case 'Promos':
+            fetchPromos();
+            break;
+          case 'Ordenes':
+            fetchOrdenes();
+            break;
+        }
+        setShowDeleteModal(false);
+        setSelectedItem(null);
+      } else {
+        const data = await response.json();
+        setDeleteError(data.error || 'Error al eliminar el registro');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      setDeleteError('Error interno del servidor');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Edit handler for all resource types
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    setIsEditing(true);
+    setEditError('');
+
+    try {
+      let endpoint = '';
+      const resourceId = selectedItem._id;
+
+      switch (selectedApi) {
+        case 'Get Users':
+          endpoint = `/api/admin/users/${resourceId}`;
+          break;
+        case 'Buffets':
+          endpoint = `/api/admin-buffets/buffets/${resourceId}`;
+          break;
+        case 'Eventos':
+          endpoint = `/api/admin-buffets/eventos/${resourceId}`;
+          break;
+        case 'Productos':
+          endpoint = `/api/admin-buffets/productos/${resourceId}`;
+          break;
+        case 'Promos':
+          endpoint = `/api/admin-buffets/promos/${resourceId}`;
+          break;
+        case 'Ordenes':
+          endpoint = `/api/admin-buffets/ordenes/${resourceId}`;
+          break;
+        default:
+          throw new Error('Tipo de recurso no válido');
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(editForm)
+      });
+
+      if (response.ok) {
+        // Refresh the appropriate list
+        switch (selectedApi) {
+          case 'Get Users':
+            fetchUsers();
+            break;
+          case 'Buffets':
+            fetchBuffets();
+            break;
+          case 'Eventos':
+            fetchEventos();
+            break;
+          case 'Productos':
+            fetchProductos();
+            break;
+          case 'Promos':
+            fetchPromos();
+            break;
+          case 'Ordenes':
+            fetchOrdenes();
+            break;
+        }
+        setShowEditModal(false);
+        setSelectedItem(null);
+        setEditForm({});
+      } else {
+        const data = await response.json();
+        setEditError(data.error || 'Error al actualizar el registro');
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+      setEditError('Error interno del servidor');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  // Open edit modal and prepare edit form
+  const openEditModal = (item: User | Buffet | Evento | Producto | Promo | Orden) => {
+    setSelectedItem(item);
+    setEditForm({ ...item });
+    setShowEditModal(true);
+    setEditError('');
+  };
+
+  // Open delete confirmation modal
+  const openDeleteModal = (item: User | Buffet | Evento | Producto | Promo | Orden) => {
+    setSelectedItem(item);
+    setShowDeleteModal(true);
+    setDeleteError('');
+  };
+
   return (
     <div className="min-h-screen flex overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
       {/* Left Sidebar */}
@@ -1156,7 +1458,23 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               <button 
-                onClick={() => setShowCreateUserModal(true)}
+                onClick={() => {
+                  if (selectedApi === 'Get Users') {
+                    setShowCreateUserModal(true);
+                  } else if (selectedApi === 'Buffets') {
+                    // Si es superadmin, cargar lista de usuarios admin
+                    if (session?.user?.role === 'superadmin') {
+                      fetchAdminUsers();
+                    }
+                    // Configurar user_id inicial
+                    setCreateBuffetForm(prev => ({
+                      ...prev,
+                      user_id: session?.user?.role === 'admin' ? session.user.id : ''
+                    }));
+                    setShowCreateBuffetModal(true);
+                  }
+                  // Agregar más casos para otros tipos en el futuro
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -1412,6 +1730,614 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Crear Buffet */}
+      {showCreateBuffetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Crear Nuevo Buffet</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateBuffetModal(false);
+                    setCreateBuffetError('');
+                    setCreateBuffetSuccess('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateBuffetSubmit} className="space-y-4">
+                {/* Nombre */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Nombre del Buffet
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createBuffetForm.nombre}
+                    onChange={(e) => setCreateBuffetForm(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="Ej: Buffet Central"
+                  />
+                </div>
+
+                {/* Usuario Propietario */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Usuario Propietario
+                  </label>
+                  {session?.user?.role === 'admin' ? (
+                    <div className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      {session.user.email} (tú)
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={createBuffetForm.user_id}
+                      onChange={(e) => setCreateBuffetForm(prev => ({ ...prev, user_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">Seleccionar usuario admin...</option>
+                      {adminUsers.map((user) => (
+                        <option key={user._id} value={user._id}>
+                          {user.email}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {session?.user?.role === 'admin' 
+                      ? 'Como admin, solo puedes crear buffets para ti mismo'
+                      : 'Selecciona qué usuario admin será el propietario del buffet'
+                    }
+                  </p>
+                </div>
+
+                {/* Lugar */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Lugar
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createBuffetForm.lugar}
+                    onChange={(e) => setCreateBuffetForm(prev => ({ ...prev, lugar: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="Ej: Av. Principal 123, Ciudad"
+                  />
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={createBuffetForm.descripcion}
+                    onChange={(e) => setCreateBuffetForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                    placeholder="Describe el tipo de comida, especialidades, etc."
+                  />
+                </div>
+
+                {/* Error Message */}
+                {createBuffetError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-red-700 dark:text-red-400">{createBuffetError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Validation Warning */}
+                {session?.user?.role === 'superadmin' && !createBuffetForm.user_id && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-amber-700 dark:text-amber-400">
+                        ⚠️ Debes seleccionar un usuario admin como propietario del buffet
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {createBuffetSuccess && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.41,10.09L6,11.5L11,16.5Z"/>
+                      </svg>
+                      <span className="text-sm text-green-700 dark:text-green-400">{createBuffetSuccess}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateBuffetModal(false);
+                      setCreateBuffetError('');
+                      setCreateBuffetSuccess('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      isCreatingBuffet || 
+                      (session?.user?.role === 'superadmin' && !createBuffetForm.user_id)
+                    }
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    {isCreatingBuffet ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creando...
+                      </>
+                    ) : (
+                      'Crear Buffet'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Editar */}
+      {showEditModal && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Editar {selectedApi === 'Get Users' ? 'Usuario' : selectedApi}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedItem(null);
+                    setEditForm({});
+                    setEditError('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleEdit} className="space-y-4">
+                {/* Renderizar campos según el tipo de recurso */}
+                {selectedApi === 'Get Users' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={editForm.email || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Rol
+                      </label>
+                      <select
+                        value={editForm.role || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, role: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="superadmin">Superadmin</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {selectedApi === 'Buffets' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nombre
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.nombre || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, nombre: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Lugar
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.lugar || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, lugar: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Descripción
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={editForm.descripcion || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, descripcion: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedApi === 'Productos' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nombre
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.nombre || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, nombre: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Precio
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={editForm.precio || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, precio: parseFloat(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Categoría
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.categoria || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, categoria: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editForm.disponible || false}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, disponible: e.target.checked }))}
+                          className="text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Disponible
+                        </span>
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                {selectedApi === 'Eventos' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nombre
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.nombre || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, nombre: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Descripción
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editForm.descripcion || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, descripcion: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Capacidad
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editForm.capacidad || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, capacidad: parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Estado
+                      </label>
+                      <select
+                        value={editForm.estado || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, estado: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="planificado">Planificado</option>
+                        <option value="en_curso">En Curso</option>
+                        <option value="finalizado">Finalizado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {selectedApi === 'Promos' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nombre
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.nombre || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, nombre: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Descripción
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editForm.descripcion || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, descripcion: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Descuento (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editForm.descuento || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, descuento: parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editForm.activa || false}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, activa: e.target.checked }))}
+                          className="text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Promoción Activa
+                        </span>
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                {selectedApi === 'Ordenes' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Total
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editForm.total || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, total: parseFloat(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Estado
+                      </label>
+                      <select
+                        value={editForm.estado || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, estado: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="pendiente">Pendiente</option>
+                        <option value="confirmada">Confirmada</option>
+                        <option value="en_preparacion">En Preparación</option>
+                        <option value="lista">Lista</option>
+                        <option value="entregada">Entregada</option>
+                        <option value="cancelada">Cancelada</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Forma de Pago
+                      </label>
+                      <select
+                        value={editForm.forma_pago || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, forma_pago: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="transferencia">Transferencia</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Error Message */}
+                {editError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-red-700 dark:text-red-400">{editError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedItem(null);
+                      setEditForm({});
+                      setEditError('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isEditing}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    {isEditing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Guardando...
+                      </>
+                    ) : (
+                      'Guardar Cambios'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmar Eliminar */}
+      {showDeleteModal && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-950/30 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Confirmar Eliminación
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Esta acción no se puede deshacer
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                ¿Estás seguro de que deseas eliminar 
+                {selectedApi === 'Get Users' && selectedItem.email && ` el usuario "${selectedItem.email}"`}
+                {selectedApi === 'Buffets' && selectedItem.nombre && ` el buffet "${selectedItem.nombre}"`}
+                {selectedApi === 'Productos' && selectedItem.nombre && ` el producto "${selectedItem.nombre}"`}
+                {selectedApi === 'Eventos' && selectedItem.nombre && ` el evento "${selectedItem.nombre}"`}
+                {selectedApi === 'Promos' && selectedItem.nombre && ` la promoción "${selectedItem.nombre}"`}
+                {selectedApi === 'Ordenes' && ` la orden "${selectedItem._id?.slice(-8).toUpperCase()}"`}
+                ?
+              </p>
+
+              {/* Error Message */}
+              {deleteError && (
+                <div className="p-3 mb-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                    </svg>
+                    <span className="text-sm text-red-700 dark:text-red-400">{deleteError}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setSelectedItem(null);
+                    setDeleteError('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    'Eliminar'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

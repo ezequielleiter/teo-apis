@@ -313,3 +313,10 @@ export class ProductosService {
     };
   }
 }
+
+// Funciones exportadas para uso en las APIs
+export const crearProducto = ProductosService.crearProducto.bind(ProductosService);
+export const obtenerProductos = ProductosService.obtenerProductos.bind(ProductosService);
+export const obtenerProductoPorId = ProductosService.obtenerProductoPorId.bind(ProductosService);
+export const actualizarProducto = ProductosService.actualizarProducto.bind(ProductosService);
+export const eliminarProducto = ProductosService.eliminarProducto.bind(ProductosService);

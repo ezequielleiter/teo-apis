@@ -271,3 +271,10 @@ export class EventosService {
       .toArray();
   }
 }
+
+// Funciones exportadas para uso en las APIs
+export const crearEvento = EventosService.crearEvento.bind(EventosService);
+export const obtenerEventos = EventosService.obtenerEventos.bind(EventosService);
+export const obtenerEventoPorId = EventosService.obtenerEventoPorId.bind(EventosService);
+export const actualizarEvento = EventosService.actualizarEvento.bind(EventosService);
+export const eliminarEvento = EventosService.eliminarEvento.bind(EventosService);

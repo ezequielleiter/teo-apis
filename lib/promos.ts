@@ -289,15 +289,28 @@ export class PromosService {
   }
 
   // Eliminar una promo
-  static async eliminarPromo(id: string): Promise<boolean> {
+  static async eliminarPromo(id: string, session?: Session | null): Promise<boolean> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
+      
+      // Verificar permisos si se proporciona sessión
+      if (session) {
+        const promo = await this.obtenerPromoPorId(id, session);
+        if (!promo) {
+          throw new Error('Promoción no encontrada');
+        }
+        await this.validateUserPermissions(promo.buffet_id, session);
+      }
+      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultado = await collection.deleteOne({ _id: objectId } as any);
       return resultado.deletedCount === 1;
-    } catch {
+    } catch (error: any) {
+      if (error.message.includes('permisos') || error.message.includes('encontrada')) {
+        throw error;
+      }
       throw new Error('ID de promo inválido');
     }
   }
@@ -312,3 +325,10 @@ export class PromosService {
       .toArray();
   }
 }
+
+// Funciones exportadas para uso en las APIs
+export const crearPromo = PromosService.crearPromo.bind(PromosService);
+export const obtenerPromos = PromosService.obtenerPromos.bind(PromosService);
+export const obtenerPromoPorId = PromosService.obtenerPromoPorId.bind(PromosService);
+export const actualizarPromo = PromosService.actualizarPromo.bind(PromosService);
+export const eliminarPromo = PromosService.eliminarPromo.bind(PromosService);

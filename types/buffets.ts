@@ -8,6 +8,14 @@ export const crearBuffetSchema = z.object({
   user_id: z.string().min(1, 'El ID del usuario es obligatorio')
 });
 
+// Schema para actualizar un buffet
+export const actualizarBuffetSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio').optional(),
+  lugar: z.string().min(1, 'El lugar es obligatorio').optional(),
+  descripcion: z.string().min(1, 'La descripción es obligatoria').optional(),
+  user_id: z.string().min(1, 'El ID del usuario es obligatorio').optional()
+});
+
 // Schema para filtros de búsqueda
 export const filtrarBuffetsSchema = z.object({
   nombre: z.string().optional(),
@@ -19,6 +27,7 @@ export const filtrarBuffetsSchema = z.object({
 
 // Tipos TypeScript derivados de los schemas
 export type CrearBuffetData = z.infer<typeof crearBuffetSchema>;
+export type ActualizarBuffetData = z.infer<typeof actualizarBuffetSchema>;
 export type FiltrarBuffetsData = z.infer<typeof filtrarBuffetsSchema>;
 
 // Tipo para el buffet completo (incluye campos generados automáticamente)

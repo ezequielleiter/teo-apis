@@ -157,3 +157,10 @@ export class BuffetsService {
     }
   }
 }
+
+// Funciones exportadas para uso en las APIs
+export const crearBuffet = BuffetsService.crearBuffet.bind(BuffetsService);
+export const obtenerBuffets = BuffetsService.obtenerBuffets.bind(BuffetsService);
+export const obtenerBuffetPorId = BuffetsService.obtenerBuffetPorId.bind(BuffetsService);
+export const actualizarBuffet = BuffetsService.actualizarBuffet.bind(BuffetsService);
+export const eliminarBuffet = BuffetsService.eliminarBuffet.bind(BuffetsService);

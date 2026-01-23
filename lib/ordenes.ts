@@ -358,16 +358,59 @@ export class OrdenesService {
     }
   }
 
-  // Eliminar una orden
-  static async eliminarOrden(id: string): Promise<boolean> {
+  // Actualizar una orden
+  static async actualizarOrden(id: string, data: Partial<CrearOrdenData>, session?: Session | null): Promise<OrdenConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
       const objectId = new ObjectId(id);
+      const buffet_id = data.buffet_id || (await this.obtenerOrdenPorId(id, session))?.buffet_id;
+
+      // Verificar permisos si se proporciona sessión
+      if (session) {
+        await this.validateUserPermissions(buffet_id, session);
+      }
+      
+      const updateData = {
+        ...data,
+        fechaActualizacion: new Date()
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await collection.updateOne({ _id: objectId } as any, { $set: updateData });
+      
+      return await this.obtenerOrdenPorId(id, session);
+    } catch (error: any) {
+      if (error.message.includes('permisos')) {
+        throw error;
+      }
+      throw new Error('ID de orden inválido');
+    }
+  }
+
+  // Eliminar una orden
+  static async eliminarOrden(id: string, session?: Session | null): Promise<boolean> {
+    const collection = await this.getCollection();
+    
+    try {
+      const objectId = new ObjectId(id);
+      
+      // Verificar permisos si se proporciona sessión
+      if (session) {
+        const orden = await this.obtenerOrdenPorId(id, session);
+        if (!orden) {
+          throw new Error('Orden no encontrada');
+        }
+        await this.validateUserPermissions(orden.buffet_id, session);
+      }
+      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultado = await collection.deleteOne({ _id: objectId } as any);
       return resultado.deletedCount === 1;
-    } catch {
+    } catch (error: any) {
+      if (error.message.includes('permisos') || error.message.includes('encontrada')) {
+        throw error;
+      }
       throw new Error('ID de orden inválido');
     }
   }
@@ -451,3 +494,10 @@ export class OrdenesService {
     };
   }
 }
+
+// Funciones exportadas para uso en las APIs
+export const crearOrden = OrdenesService.crearOrden.bind(OrdenesService);
+export const obtenerOrdenes = OrdenesService.obtenerOrdenes.bind(OrdenesService);
+export const obtenerOrdenPorId = OrdenesService.obtenerOrdenPorId.bind(OrdenesService);
+export const actualizarOrden = OrdenesService.actualizarOrden.bind(OrdenesService);
+export const eliminarOrden = OrdenesService.eliminarOrden.bind(OrdenesService);
