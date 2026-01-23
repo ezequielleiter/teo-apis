@@ -66,6 +66,8 @@ export default function LoginPage() {
     setGeneralError('');
 
     try {
+        console.log(formData);
+        
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
