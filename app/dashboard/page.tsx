@@ -1219,8 +1219,16 @@ export default function DashboardPage() {
         setShowDeleteModal(false);
         setSelectedItem(null);
       } else {
-        const data = await response.json();
-        setDeleteError(data.error || 'Error al eliminar el registro');
+        // Intentar leer la respuesta como JSON, pero manejar el caso de respuesta vacía
+        let errorMessage = 'Error al eliminar el registro';
+        try {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+        } catch (jsonError) {
+          // Si no se puede parsear el JSON, usar el status de la respuesta
+          errorMessage = `Error ${response.status}: ${response.statusText || 'Error del servidor'}`;
+        }
+        setDeleteError(errorMessage);
       }
     } catch (error) {
       console.error('Error deleting item:', error);

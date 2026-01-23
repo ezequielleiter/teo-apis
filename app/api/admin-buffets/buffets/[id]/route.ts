@@ -79,7 +79,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    await eliminarBuffet(id, session);
+    const eliminado = await eliminarBuffet(id, session);
+
+    if (!eliminado) {
+      return NextResponse.json({ 
+        error: 'No se pudo eliminar el buffet' 
+      }, { status: 400 });
+    }
 
     return NextResponse.json({ 
       message: 'Buffet eliminado exitosamente' 

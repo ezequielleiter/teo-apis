@@ -145,14 +145,25 @@ export class BuffetsService {
     
     try {
       const objectId = new ObjectId(id);
-      let query: Record<string, unknown> = { _id: objectId };
       
-      // Aplicar filtros de usuario según permisos
+      // Primero verificar si el buffet existe y el usuario tiene permisos para verlo
+      let query: Record<string, unknown> = { _id: objectId };
       query = addUserFilters(session || null, query);
       
-      const resultado = await collection.deleteOne(query as unknown as Filter<Buffet>);
+      const buffetToDelete = await collection.findOne(query as unknown as Filter<Buffet>);
+      
+      if (!buffetToDelete) {
+        throw new Error('Buffet no encontrado o no tienes permisos para eliminarlo');
+      }
+      
+      // Eliminar usando solo el ObjectId (sin filtros adicionales)
+      const resultado = await collection.deleteOne({ _id: objectId } as unknown as Filter<Buffet>);
+      
       return resultado.deletedCount === 1;
-    } catch {
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error('ID de buffet inválido');
     }
   }

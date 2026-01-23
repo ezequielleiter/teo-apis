@@ -8,10 +8,12 @@ export async function middleware(request: NextRequest) {
   const allowedOrigins = process.env.ALLOWED_ORIGINS || 'http://localhost:3001';
   const originsArray = allowedOrigins.split(',').map(origin => origin.trim());
   const requestOrigin = request.headers.get('origin');
+  const requestUrl = new URL(request.url);
+  const sameOrigin = !requestOrigin; // Si no hay origin header, es same-origin
 
   // Determinar si el origen está permitido
-  const isOriginAllowed = !requestOrigin || originsArray.includes(requestOrigin) || originsArray.includes('*');
-  const corsOrigin = isOriginAllowed ? (requestOrigin || '*') : 'null';
+  const isOriginAllowed = sameOrigin || originsArray.includes(requestOrigin || '') || originsArray.includes('*');
+  const corsOrigin = isOriginAllowed ? (requestOrigin || requestUrl.origin) : 'null';
 
   // Crear respuesta con headers CORS
   function createCorsResponse(response: NextResponse) {
