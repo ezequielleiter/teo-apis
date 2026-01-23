@@ -3,6 +3,8 @@ import clientPromise from './mongodb';
 import { Producto, ProductoConBuffet, CrearProductoData, FiltrarProductosData } from '../types/productos';
 import { BuffetsService } from './buffets';
 import { addUserFilters } from './helpers/permissions';
+import { getServerSession } from 'next-auth';
+import { authOptions } from './auth-options';
 
 export class ProductosService {
   private static async getCollection(): Promise<Collection<Producto>> {
@@ -152,10 +154,10 @@ export class ProductosService {
   // Obtener un producto por ID
   static async obtenerProductoPorId(
     id: string,
-    session?: { user: { id: string; role: string } } | null
   ): Promise<ProductoConBuffet | null> {
     const collection = await this.getCollection();
-    
+    const session = await getServerSession(authOptions);
+
     try {
       const objectId = new ObjectId(id);
       let query: Record<string, unknown> = { _id: objectId };

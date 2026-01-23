@@ -28,6 +28,8 @@ export class PromosService {
     try {
       for (const producto_id of productos_ids) {
         const producto = await ProductosService.obtenerProductoPorId(producto_id);
+        console.log(producto);
+        
         if (!producto || producto.buffet_id !== buffet_id) {
           return false;
         }
@@ -64,6 +66,8 @@ export class PromosService {
     }
 
     // Validar que todos los productos existen y pertenecen al buffet
+    console.log(data);
+    
     const productosValidos = await this.validarProductos(data.buffet_id, data.productos);
     if (!productosValidos) {
       throw new Error('Uno o más productos no existen o no pertenecen al buffet especificado');

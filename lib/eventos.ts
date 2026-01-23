@@ -38,6 +38,7 @@ export class EventosService {
     const collection = await this.getCollection();
     
     const nuevoEvento: Omit<Evento, '_id'> = {
+      nombre: data.nombre,
       fecha: new Date(data.fecha),
       buffet_id: data.buffet_id,
       user_id: data.user_id,
@@ -81,6 +82,10 @@ export class EventosService {
     
     // Construir query de MongoDB
     let query: Record<string, unknown> = {};
+    
+    if (filtros.nombre) {
+      query.nombre = { $regex: filtros.nombre, $options: 'i' };
+    }
     
     if (filtros.buffet_id) {
       try {

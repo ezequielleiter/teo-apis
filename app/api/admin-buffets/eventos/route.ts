@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
     // Extraer parámetros de consulta
     const filtros: Record<string, unknown> = {};
     
+    if (searchParams.get('nombre')) {
+      filtros.nombre = searchParams.get('nombre');
+    }
+    
     if (searchParams.get('buffet_id')) {
       filtros.buffet_id = searchParams.get('buffet_id');
     }
@@ -112,10 +116,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Agregar user_id del usuario actual
+    // Determinar user_id: usar el enviado si existe, sino el de la sesión actual
     const bodyConUserId = {
       ...body,
-      user_id: session.user.id
+      user_id: body.user_id || session.user.id
     };
     
     // Validar datos

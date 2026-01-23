@@ -604,6 +604,16 @@ export default function DashboardPage() {
   };
 
   const getEstadoBadge = (estado: string, tipo: 'evento' | 'orden' | 'promo') => {
+    // Validar que estado sea una string válida
+    if (!estado || typeof estado !== 'string') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-950/40 dark:text-gray-400">
+          <span className="size-1.5 rounded-full bg-gray-500"></span>
+          Sin estado
+        </span>
+      );
+    }
+
     let colorClasses = '';
     let bgColorClasses = '';
     
@@ -809,7 +819,9 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{producto._id.slice(-8).toUpperCase()}</td>
             <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{producto.nombre}</td>
             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{producto.categoria}</td>
-            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">${producto.precio.toFixed(2)}</td>
+            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">
+              ${typeof producto.precio === 'number' ? producto.precio.toFixed(2) : '0.00'}
+            </td>
             <td className="px-6 py-4">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 producto.disponible 
@@ -881,7 +893,9 @@ export default function DashboardPage() {
           <tr key={orden._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
             <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{orden._id.slice(-8).toUpperCase()}</td>
             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{orden.buffet_id.slice(-8).toUpperCase()}</td>
-            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">${orden.total.toFixed(2)}</td>
+            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">
+              ${typeof orden.total === 'number' ? orden.total.toFixed(2) : '0.00'}
+            </td>
             <td className="px-6 py-4">{getEstadoBadge(orden.estado, 'orden')}</td>
             <td className="px-6 py-4">
               <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono">
