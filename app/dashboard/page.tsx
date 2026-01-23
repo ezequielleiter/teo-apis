@@ -2,12 +2,98 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+
+interface ApiRecord {
+  id: string;
+  userName: string;
+  userInitials: string;
+  userColor: string;
+  endpoint: string;
+  status: 'Active' | 'Maintenance' | 'Deprecated';
+  dateCreated: string;
+}
+
+const mockApiRecords: ApiRecord[] = [
+  {
+    id: 'USR-84920',
+    userName: 'Johnathan Doe',
+    userInitials: 'JD',
+    userColor: 'blue',
+    endpoint: '/api/v1/users/fetch',
+    status: 'Active',
+    dateCreated: 'Oct 24, 2023'
+  },
+  {
+    id: 'USR-84921',
+    userName: 'Jane Smith',
+    userInitials: 'JS',
+    userColor: 'purple',
+    endpoint: '/api/v1/users/fetch',
+    status: 'Active',
+    dateCreated: 'Oct 25, 2023'
+  },
+  {
+    id: 'USR-84925',
+    userName: 'System Bot',
+    userInitials: 'SB',
+    userColor: 'amber',
+    endpoint: '/api/v1/users/fetch',
+    status: 'Maintenance',
+    dateCreated: 'Oct 26, 2023'
+  },
+  {
+    id: 'USR-84930',
+    userName: 'Legacy App',
+    userInitials: 'LA',
+    userColor: 'rose',
+    endpoint: '/api/v1/users/fetch',
+    status: 'Deprecated',
+    dateCreated: 'Oct 27, 2023'
+  },
+  {
+    id: 'USR-84942',
+    userName: 'Web Portal',
+    userInitials: 'WP',
+    userColor: 'indigo',
+    endpoint: '/api/v1/users/fetch',
+    status: 'Active',
+    dateCreated: 'Oct 28, 2023'
+  }
+];
+
+const sidebarFeatures = [
+  {
+    name: 'User Management',
+    apis: [
+      { name: 'Get Users', endpoint: '/api/v1/users/fetch', active: true },
+      { name: 'Create User', endpoint: '/api/v1/users/create', active: false },
+      { name: 'Update Profile', endpoint: '/api/v1/users/update', active: false }
+    ]
+  },
+  {
+    name: 'Auth Services',
+    apis: [
+      { name: 'Login', endpoint: '/api/auth/login', active: false },
+      { name: 'Token Refresh', endpoint: '/api/auth/refresh', active: false },
+      { name: 'MFA Verify', endpoint: '/api/auth/mfa', active: false }
+    ]
+  },
+  {
+    name: 'Product Catalog',
+    apis: [
+      { name: 'List Products', endpoint: '/api/v1/products', active: false }
+    ]
+  }
+];
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [selectedApi, setSelectedApi] = useState('Get Users');
+  const [apiRecords, setApiRecords] = useState<ApiRecord[]>(mockApiRecords);
+  const [expandedFeatures, setExpandedFeatures] = useState<Set<number>>(new Set()); // All collapsed by default
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -18,10 +104,10 @@ export default function DashboardPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-light/50 to-primary-light/20 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-dark font-medium">Cargando...</span>
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-white font-medium">Cargando...</span>
         </div>
       </div>
     );
@@ -35,137 +121,295 @@ export default function DashboardPage() {
     await signOut({ callbackUrl: '/' });
   };
 
+  const toggleFeature = (featureIndex: number) => {
+    const newExpandedFeatures = new Set(expandedFeatures);
+    if (newExpandedFeatures.has(featureIndex)) {
+      newExpandedFeatures.delete(featureIndex);
+    } else {
+      newExpandedFeatures.add(featureIndex);
+    }
+    setExpandedFeatures(newExpandedFeatures);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Active':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-500"></span>
+            Active
+          </span>
+        );
+      case 'Maintenance':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+            <span className="size-1.5 rounded-full bg-amber-500"></span>
+            Maintenance
+          </span>
+        );
+      case 'Deprecated':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            <span className="size-1.5 rounded-full bg-slate-400"></span>
+            Deprecated
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getUserBadge = (initials: string, color: string) => {
+    const colorClasses = {
+      blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
+      purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
+      amber: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
+      rose: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400',
+      indigo: 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+    };
+
+    return (
+      <div className={`size-8 rounded-full flex items-center justify-center font-bold text-xs ${colorClasses[color as keyof typeof colorClasses]}`}>
+        {initials}
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-light/50 to-primary-light/20">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-primary-light/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-dark">TEO APIs</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-dark/70">{session.user?.email}</span>
+    <div className="min-h-screen flex overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+      {/* Left Sidebar */}
+      <aside className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-screen overflow-y-auto">
+        <div className="p-6 flex items-center gap-3">
+          <div className="size-8 bg-blue-500 rounded-lg flex items-center justify-center text-white">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,12H10V10H14M14,16H10V14H14M20,8H17.19C16.74,7.22 16.12,6.55 15.37,6.04L17,4.41L15.59,3L13.42,5.17C12.96,5.06 12.5,5 12,5C11.5,5 11.04,5.06 10.59,5.17L8.41,3L7,4.41L8.62,6.04C7.88,6.55 7.26,7.22 6.81,8H4V10H6.09C6.04,10.33 6,10.66 6,11V12H4V14H6V15C6,15.34 6.04,15.67 6.09,16H4V18H6.81C7.85,19.79 9.78,21 12,21C14.22,21 16.15,19.79 17.19,18H20V16H17.91C17.96,15.67 18,15.34 18,15V14H20V12H18V11C18,10.66 17.96,10.33 17.91,10H20V8M16,15A4,4 0 0,1 12,19A4,4 0 0,1 8,15V11A4,4 0 0,1 12,7A4,4 0 0,1 16,11V15Z"/>
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight">API Admin</h1>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-6">
+          {sidebarFeatures.map((feature, featureIndex) => {
+            const isExpanded = expandedFeatures.has(featureIndex);
+            return (
+            <div key={featureIndex}>
               <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-sm font-medium text-primary hover:text-primary-hover transition-colors"
+                onClick={() => toggleFeature(featureIndex)}
+                className="w-full flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider px-2 mb-2 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
-                Cerrar sesión
+                <span>{feature.name}</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+                  fill="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+                </svg>
+              </button>
+              {isExpanded && (
+              <div className="space-y-1">
+                {feature.apis.map((api, apiIndex) => (
+                  <button
+                    key={apiIndex}
+                    onClick={() => setSelectedApi(api.name)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      api.name === selectedApi
+                        ? 'bg-blue-500/10 text-blue-600'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+                    </svg>
+                    <span>{api.name}</span>
+                  </button>
+                ))}
+              </div>
+              )}
+            </div>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm transition-colors">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+            </svg>
+            <span>Settings</span>
+          </button>
+          <button 
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-medium text-sm transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14.08,15.59L16.67,13H7V11H16.67L14.08,8.41L15.5,7L20.5,12L15.5,17L14.08,15.59M19,3A2,2 0 0,1 21,5V9.67L19,7.67V5H5V19H19V16.33L21,14.33V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19Z"/>
+            </svg>
+            <span>Log out</span>
+          </button>
+          <div className="mt-4 flex items-center gap-3 px-3 py-2">
+            <div className="size-8 rounded-full bg-cover bg-center bg-gray-300 dark:bg-gray-600"></div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-semibold truncate">Alex Rivera</span>
+              <span className="text-xs text-slate-500 truncate">Admin Access</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <header className="h-16 flex items-center justify-between px-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <nav className="flex items-center gap-2 text-sm font-medium">
+              <span className="text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">Feature</span>
+              <svg className="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+              </svg>
+              <span className="text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">User Management</span>
+              <svg className="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+              </svg>
+              <span className="text-slate-900 dark:text-white">{selectedApi}</span>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative w-64">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+              </svg>
+              <input 
+                className="w-full pl-10 pr-4 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 placeholder:text-slate-500" 
+                placeholder="Search logs or IDs..." 
+                type="text"
+              />
+            </div>
+            <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M10,21H14A2,2 0 0,1 12,23A2,2 0 0,1 10,21M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M17,11A5,5 0 0,0 12,6A5,5 0 0,0 7,11V18H17V11Z"/>
+              </svg>
+              <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+            </button>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-slate-900/30">
+          {/* Page Heading */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+            <div className="space-y-1">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{selectedApi}</h2>
+              <p className="text-slate-500 dark:text-slate-400">Manage and view all retrieval records for the User Management endpoint.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+                Export
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                </svg>
+                Add New Record
               </button>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-primary-light/20 mb-8">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
+          {/* Table Container */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Record ID</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">User Name</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Endpoint</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date Created</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {apiRecords.map((record) => (
+                    <tr key={record.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{record.id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {getUserBadge(record.userInitials, record.userColor)}
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{record.userName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono">{record.endpoint}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getStatusBadge(record.status)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{record.dateCreated}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                            </svg>
+                          </button>
+                          <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <h2 className="text-3xl font-bold text-dark mb-2">
-              ¡Bienvenido al Dashboard!
-            </h2>
-            <p className="text-dark/70 mb-6">
-              Has iniciado sesión exitosamente como {session.user?.email}
-            </p>
-          </div>
-        </div>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-primary-light/20 hover:shadow-xl transition-shadow">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
+            {/* Pagination */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Showing 1 to 5 of 24 records</span>
+              <div className="flex items-center gap-2">
+                <button className="p-1 rounded border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.41,16.58L10.83,12L15.41,7.42L14,6L8,12L14,18L15.41,16.58Z"/>
+                  </svg>
+                </button>
+                <button className="px-2.5 py-1 text-xs font-bold rounded bg-blue-500 text-white">1</button>
+                <button className="px-2.5 py-1 text-xs font-bold rounded text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">2</button>
+                <button className="px-2.5 py-1 text-xs font-bold rounded text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">3</button>
+                <button className="p-1 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-dark mb-2">APIs</h3>
-            <p className="text-dark/60 text-sm">
-              Gestiona tus APIs disponibles
-            </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-primary-light/20 hover:shadow-xl transition-shadow">
-            <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-dark mb-2">Perfil</h3>
-            <p className="text-dark/60 text-sm">
-              Administra tu cuenta y configuración
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-primary-light/20 hover:shadow-xl transition-shadow">
-            <div className="w-12 h-12 bg-primary-light/20 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-dark mb-2">Documentación</h3>
-            <p className="text-dark/60 text-sm">
-              Revisa la documentación de APIs
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-primary-light/20 hover:shadow-xl transition-shadow">
-            <div className="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-secondary-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75M15.91 11.077a2.25 2.25 0 01-1.96 0M13.773 7.293c0-1.636 2.25-2.25 2.25-2.25s2.25.614 2.25 2.25-2.25 2.25-2.25 2.25-2.25-.614-2.25-2.25z"></path>
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-dark mb-2">Soporte</h3>
-            <p className="text-dark/60 text-sm">
-              Obtén ayuda y soporte técnico
-            </p>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-primary-light/20">
-          <h3 className="text-xl font-semibold text-dark mb-6">Actividad Reciente</h3>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 p-4 bg-light rounded-lg">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          {/* Documentation Snippet Footer */}
+          <div className="mt-8 p-6 rounded-xl bg-blue-500/5 border border-blue-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="size-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V16H6V18H15M18,14V12H6V14H18Z"/>
                 </svg>
               </div>
-              <div className="flex-1">
-                <p className="text-dark font-medium">Sesión iniciada</p>
-                <p className="text-dark/60 text-sm">Acabas de iniciar sesión</p>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white">API Documentation</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Learn how to integrate the <code className="bg-blue-500/10 px-1 rounded text-blue-500">GET /users</code> endpoint into your application.</p>
               </div>
-              <span className="text-primary text-sm">Ahora</span>
             </div>
+            <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-blue-500/30 text-blue-500 text-sm font-bold rounded-lg hover:bg-blue-500/10 transition-colors">
+              View Specs
+            </button>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-primary-light/20 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <p className="text-dark/60 text-sm">© 2026 TEO APIs. Todos los derechos reservados.</p>
-            <div className="flex gap-6">
-              <Link href="/help" className="text-dark/60 hover:text-primary text-sm transition-colors">
-                Ayuda
-              </Link>
-              <Link href="/privacy" className="text-dark/60 hover:text-primary text-sm transition-colors">
-                Privacidad
-              </Link>
-              <Link href="/terms" className="text-dark/60 hover:text-primary text-sm transition-colors">
-                Términos
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
