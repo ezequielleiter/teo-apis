@@ -25,6 +25,68 @@ interface User {
   createdBy?: string;
 }
 
+interface Buffet {
+  _id: string;
+  nombre: string;
+  lugar: string;
+  descripcion: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+interface Evento {
+  _id: string;
+  buffet_id: string;
+  nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  descripcion: string;
+  capacidad: number;
+  estado: 'planificado' | 'en_curso' | 'finalizado' | 'cancelado';
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+interface Producto {
+  _id: string;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  categoria: string;
+  disponible: boolean;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+interface Promo {
+  _id: string;
+  nombre: string;
+  descripcion: string;
+  descuento: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  activa: boolean;
+  productos: string[];
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+interface Orden {
+  _id: string;
+  buffet_id: string;
+  evento_id?: string;
+  productos: Array<{
+    producto_id: string;
+    cantidad: number;
+    precio_unitario: number;
+  }>;
+  total: number;
+  estado: 'pendiente' | 'confirmada' | 'en_preparacion' | 'lista' | 'entregada' | 'cancelada';
+  forma_pago: 'efectivo' | 'tarjeta' | 'transferencia';
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
 const mockApiRecords: ApiRecord[] = [
   {
     id: 'USR-84920',
@@ -83,17 +145,13 @@ const sidebarFeatures = [
     ]
   },
   {
-    name: 'Auth Services',
+    name: 'Admin Buffets',
     apis: [
-      { name: 'Login', endpoint: '/api/auth/login', active: false },
-      { name: 'Token Refresh', endpoint: '/api/auth/refresh', active: false },
-      { name: 'MFA Verify', endpoint: '/api/auth/mfa', active: false }
-    ]
-  },
-  {
-    name: 'Product Catalog',
-    apis: [
-      { name: 'List Products', endpoint: '/api/v1/products', active: false }
+      { name: 'Buffets', endpoint: '/api/admin-buffets/buffets', active: false },
+      { name: 'Eventos', endpoint: '/api/admin-buffets/eventos', active: false },
+      { name: 'Productos', endpoint: '/api/admin-buffets/productos', active: false },
+      { name: 'Promos', endpoint: '/api/admin-buffets/promos', active: false },
+      { name: 'Ordenes', endpoint: '/api/admin-buffets/ordenes', active: false }
     ]
   }
 ];
@@ -104,6 +162,11 @@ export default function DashboardPage() {
   const [selectedApi, setSelectedApi] = useState('Get Users');
   const [apiRecords, setApiRecords] = useState<ApiRecord[]>(mockApiRecords);
   const [users, setUsers] = useState<User[]>([]);
+  const [buffets, setBuffets] = useState<Buffet[]>([]);
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [promos, setPromos] = useState<Promo[]>([]);
+  const [ordenes, setOrdenes] = useState<Orden[]>([]);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<number>>(new Set()); // All collapsed by default
   const [isLoading, setIsLoading] = useState(false);
 
@@ -114,10 +177,29 @@ export default function DashboardPage() {
     }
   }, [session, status, router]);
 
-  // Fetch users when component mounts and "Get Users" is selected by default
+  // Fetch data when component mounts and specific API is selected
   useEffect(() => {
-    if (selectedApi === 'Get Users' && session) {
-      fetchUsers();
+    if (session) {
+      switch (selectedApi) {
+        case 'Get Users':
+          fetchUsers();
+          break;
+        case 'Buffets':
+          fetchBuffets();
+          break;
+        case 'Eventos':
+          fetchEventos();
+          break;
+        case 'Productos':
+          fetchProductos();
+          break;
+        case 'Promos':
+          fetchPromos();
+          break;
+        case 'Ordenes':
+          fetchOrdenes();
+          break;
+      }
     }
   }, [selectedApi, session]);
 
@@ -169,10 +251,122 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchBuffets = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin-buffets/buffets');
+      if (response.ok) {
+        const data = await response.json();
+        setBuffets(data.buffets || []);
+      } else {
+        console.error('Error fetching buffets:', response.statusText);
+        setBuffets([]);
+      }
+    } catch (error) {
+      console.error('Error fetching buffets:', error);
+      setBuffets([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEventos = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin-buffets/eventos');
+      if (response.ok) {
+        const data = await response.json();
+        setEventos(data.eventos || []);
+      } else {
+        console.error('Error fetching eventos:', response.statusText);
+        setEventos([]);
+      }
+    } catch (error) {
+      console.error('Error fetching eventos:', error);
+      setEventos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchProductos = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin-buffets/productos');
+      if (response.ok) {
+        const data = await response.json();
+        setProductos(data.productos || []);
+      } else {
+        console.error('Error fetching productos:', response.statusText);
+        setProductos([]);
+      }
+    } catch (error) {
+      console.error('Error fetching productos:', error);
+      setProductos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPromos = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin-buffets/promos');
+      if (response.ok) {
+        const data = await response.json();
+        setPromos(data.promos || []);
+      } else {
+        console.error('Error fetching promos:', response.statusText);
+        setPromos([]);
+      }
+    } catch (error) {
+      console.error('Error fetching promos:', error);
+      setPromos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchOrdenes = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin-buffets/ordenes');
+      if (response.ok) {
+        const data = await response.json();
+        setOrdenes(data.ordenes || []);
+      } else {
+        console.error('Error fetching ordenes:', response.statusText);
+        setOrdenes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching ordenes:', error);
+      setOrdenes([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleApiSelect = (apiName: string) => {
     setSelectedApi(apiName);
-    if (apiName === 'Get Users') {
-      fetchUsers();
+    switch (apiName) {
+      case 'Get Users':
+        fetchUsers();
+        break;
+      case 'Buffets':
+        fetchBuffets();
+        break;
+      case 'Eventos':
+        fetchEventos();
+        break;
+      case 'Productos':
+        fetchProductos();
+        break;
+      case 'Promos':
+        fetchPromos();
+        break;
+      case 'Ordenes':
+        fetchOrdenes();
+        break;
     }
   };
 
@@ -245,6 +439,496 @@ export default function DashboardPage() {
       month: 'short',
       day: '2-digit'
     });
+  };
+
+  const getApiDescription = (apiName: string) => {
+    switch (apiName) {
+      case 'Get Users':
+        return 'Manage and view all users in the system.';
+      case 'Buffets':
+        return 'Manage and view all buffets in the system.';
+      case 'Eventos':
+        return 'Manage and view all events associated with buffets.';
+      case 'Productos':
+        return 'Manage and view all products available for buffets.';
+      case 'Promos':
+        return 'Manage and view all promotional offers and discounts.';
+      case 'Ordenes':
+        return 'Manage and view all orders placed for buffets and events.';
+      default:
+        return 'Manage and view all retrieval records for the selected endpoint.';
+    }
+  };
+
+  const getCurrentData = () => {
+    switch (selectedApi) {
+      case 'Get Users':
+        return users;
+      case 'Buffets':
+        return buffets;
+      case 'Eventos':
+        return eventos;
+      case 'Productos':
+        return productos;
+      case 'Promos':
+        return promos;
+      case 'Ordenes':
+        return ordenes;
+      default:
+        return [];
+    }
+  };
+
+  const getDataCount = () => {
+    return getCurrentData().length;
+  };
+
+  const renderTableHeaders = () => {
+    switch (selectedApi) {
+      case 'Get Users':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">User ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Email</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Role</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">APIs Access</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      case 'Buffets':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Lugar</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Descripción</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha Creación</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      case 'Eventos':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Buffet</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha Inicio</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      case 'Productos':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Categoría</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Precio</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disponible</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      case 'Promos':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Descuento</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha Inicio</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      case 'Ordenes':
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Buffet</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Forma Pago</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+      default:
+        return (
+          <>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Record ID</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">User Name</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Endpoint</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date Created</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+          </>
+        );
+    }
+  };
+
+  const getEstadoBadge = (estado: string, tipo: 'evento' | 'orden' | 'promo') => {
+    let colorClasses = '';
+    let bgColorClasses = '';
+    
+    switch (tipo) {
+      case 'evento':
+        switch (estado) {
+          case 'planificado':
+            colorClasses = 'text-blue-700 dark:text-blue-400';
+            bgColorClasses = 'bg-blue-100 dark:bg-blue-950/40';
+            break;
+          case 'en_curso':
+            colorClasses = 'text-green-700 dark:text-green-400';
+            bgColorClasses = 'bg-green-100 dark:bg-green-950/40';
+            break;
+          case 'finalizado':
+            colorClasses = 'text-gray-700 dark:text-gray-400';
+            bgColorClasses = 'bg-gray-100 dark:bg-gray-950/40';
+            break;
+          case 'cancelado':
+            colorClasses = 'text-red-700 dark:text-red-400';
+            bgColorClasses = 'bg-red-100 dark:bg-red-950/40';
+            break;
+        }
+        break;
+      case 'orden':
+        switch (estado) {
+          case 'pendiente':
+            colorClasses = 'text-yellow-700 dark:text-yellow-400';
+            bgColorClasses = 'bg-yellow-100 dark:bg-yellow-950/40';
+            break;
+          case 'confirmada':
+            colorClasses = 'text-blue-700 dark:text-blue-400';
+            bgColorClasses = 'bg-blue-100 dark:bg-blue-950/40';
+            break;
+          case 'en_preparacion':
+            colorClasses = 'text-purple-700 dark:text-purple-400';
+            bgColorClasses = 'bg-purple-100 dark:bg-purple-950/40';
+            break;
+          case 'lista':
+            colorClasses = 'text-green-700 dark:text-green-400';
+            bgColorClasses = 'bg-green-100 dark:bg-green-950/40';
+            break;
+          case 'entregada':
+            colorClasses = 'text-emerald-700 dark:text-emerald-400';
+            bgColorClasses = 'bg-emerald-100 dark:bg-emerald-950/40';
+            break;
+          case 'cancelada':
+            colorClasses = 'text-red-700 dark:text-red-400';
+            bgColorClasses = 'bg-red-100 dark:bg-red-950/40';
+            break;
+        }
+        break;
+      case 'promo':
+        if (estado === 'true' || estado === 'activa') {
+          colorClasses = 'text-green-700 dark:text-green-400';
+          bgColorClasses = 'bg-green-100 dark:bg-green-950/40';
+        } else {
+          colorClasses = 'text-red-700 dark:text-red-400';
+          bgColorClasses = 'bg-red-100 dark:bg-red-950/40';
+        }
+        break;
+    }
+
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColorClasses} ${colorClasses}`}>
+        <span className={`size-1.5 rounded-full ${colorClasses.includes('blue') ? 'bg-blue-500' : 
+          colorClasses.includes('green') ? 'bg-green-500' :
+          colorClasses.includes('yellow') ? 'bg-yellow-500' :
+          colorClasses.includes('purple') ? 'bg-purple-500' :
+          colorClasses.includes('emerald') ? 'bg-emerald-500' :
+          colorClasses.includes('red') ? 'bg-red-500' : 'bg-gray-500'}`}></span>
+        {estado.replace('_', ' ')}
+      </span>
+    );
+  };
+
+  const renderTableRows = () => {
+    const currentData = getCurrentData();
+    
+    if (currentData.length === 0) {
+      return (
+        <tr>
+          <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+            No hay registros disponibles
+          </td>
+        </tr>
+      );
+    }
+
+    switch (selectedApi) {
+      case 'Get Users':
+        return users.map((user) => (
+          <tr key={user._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{user._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-3">
+                {getUserBadge(getInitialsFromEmail(user.email), getColorFromRole(user.role))}
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.email}</span>
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                user.role === 'superadmin' 
+                  ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+              }`}>
+                <span className={`size-1.5 rounded-full ${
+                  user.role === 'superadmin' ? 'bg-rose-500' : 'bg-blue-500'
+                }`}></span>
+                {user.role}
+              </span>
+            </td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.apis || 'Unlimited'}</td>
+            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(user.createdAt)}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      case 'Buffets':
+        return buffets.map((buffet) => (
+          <tr key={buffet._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{buffet._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{buffet.nombre}</td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{buffet.lugar}</td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{buffet.descripcion.substring(0, 50)}...</td>
+            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(buffet.fechaCreacion)}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      case 'Eventos':
+        return eventos.map((evento) => (
+          <tr key={evento._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{evento._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{evento.nombre}</td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{evento.buffet_id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4">{getEstadoBadge(evento.estado, 'evento')}</td>
+            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(evento.fecha_inicio)}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      case 'Productos':
+        return productos.map((producto) => (
+          <tr key={producto._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{producto._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{producto.nombre}</td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{producto.categoria}</td>
+            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">${producto.precio.toFixed(2)}</td>
+            <td className="px-6 py-4">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                producto.disponible 
+                  ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+                  : 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+              }`}>
+                <span className={`size-1.5 rounded-full ${
+                  producto.disponible ? 'bg-green-500' : 'bg-red-500'
+                }`}></span>
+                {producto.disponible ? 'Disponible' : 'No disponible'}
+              </span>
+            </td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      case 'Promos':
+        return promos.map((promo) => (
+          <tr key={promo._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{promo._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.nombre}</td>
+            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">{promo.descuento}%</td>
+            <td className="px-6 py-4">{getEstadoBadge(promo.activa ? 'activa' : 'inactiva', 'promo')}</td>
+            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(promo.fecha_inicio)}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      case 'Ordenes':
+        return ordenes.map((orden) => (
+          <tr key={orden._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{orden._id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{orden.buffet_id.slice(-8).toUpperCase()}</td>
+            <td className="px-6 py-4 text-sm font-mono text-slate-900 dark:text-slate-100">${orden.total.toFixed(2)}</td>
+            <td className="px-6 py-4">{getEstadoBadge(orden.estado, 'orden')}</td>
+            <td className="px-6 py-4">
+              <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono">
+                {orden.forma_pago}
+              </span>
+            </td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+
+      default:
+        return apiRecords.map((record) => (
+          <tr key={record.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{record.id}</td>
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-3">
+                {getUserBadge(record.userInitials, record.userColor)}
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{record.userName}</span>
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono">{record.endpoint}</span>
+            </td>
+            <td className="px-6 py-4">
+              {getStatusBadge(record.status)}
+            </td>
+            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{record.dateCreated}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex justify-end gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                  </svg>
+                </button>
+                <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ));
+    }
+  };
+
+  const getPaginationText = () => {
+    const count = getDataCount();
+    switch (selectedApi) {
+      case 'Get Users':
+        return count === 0 ? 'No users found' : `Showing ${count} users`;
+      case 'Buffets':
+        return count === 0 ? 'No buffets found' : `Showing ${count} buffets`;
+      case 'Eventos':
+        return count === 0 ? 'No events found' : `Showing ${count} events`;
+      case 'Productos':
+        return count === 0 ? 'No products found' : `Showing ${count} products`;
+      case 'Promos':
+        return count === 0 ? 'No promos found' : `Showing ${count} promos`;
+      case 'Ordenes':
+        return count === 0 ? 'No orders found' : `Showing ${count} orders`;
+      default:
+        return count === 0 ? 'No records found' : `Showing ${count} records`;
+    }
+  };
+
+  const getAddButtonText = () => {
+    switch (selectedApi) {
+      case 'Get Users':
+        return 'Add New User';
+      case 'Buffets':
+        return 'Add New Buffet';
+      case 'Eventos':
+        return 'Add New Event';
+      case 'Productos':
+        return 'Add New Product';
+      case 'Promos':
+        return 'Add New Promo';
+      case 'Ordenes':
+        return 'Add New Order';
+      default:
+        return 'Add New Record';
+    }
+  };
+
+  const getApiEndpoint = () => {
+    switch (selectedApi) {
+      case 'Get Users':
+        return 'GET /api/admin/users';
+      case 'Buffets':
+        return 'GET /api/admin-buffets/buffets';
+      case 'Eventos':
+        return 'GET /api/admin-buffets/eventos';
+      case 'Productos':
+        return 'GET /api/admin-buffets/productos';
+      case 'Promos':
+        return 'GET /api/admin-buffets/promos';
+      case 'Ordenes':
+        return 'GET /api/admin-buffets/ordenes';
+      default:
+        return 'GET /api/endpoint';
+    }
   };
 
   return (
@@ -374,10 +1058,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{selectedApi}</h2>
               <p className="text-slate-500 dark:text-slate-400">
-                {selectedApi === 'Get Users' 
-                  ? 'Manage and view all users in the system.' 
-                  : 'Manage and view all retrieval records for the User Management endpoint.'
-                }
+                {getApiDescription(selectedApi)}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -391,7 +1072,7 @@ export default function DashboardPage() {
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
                 </svg>
-                {selectedApi === 'Get Users' ? 'Add New User' : 'Add New Record'}
+                {getAddButtonText()}
               </button>
             </div>
           </div>
@@ -410,110 +1091,11 @@ export default function DashboardPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                    {selectedApi === 'Get Users' ? (
-                      <>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">User ID</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Email</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Role</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">APIs Access</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Record ID</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">User Name</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Endpoint</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date Created</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
-                      </>
-                    )}
+                    {renderTableHeaders()}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {selectedApi === 'Get Users' ? (
-                    users.length > 0 ? (
-                      users.map((user) => (
-                        <tr key={user._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{user._id.slice(-8).toUpperCase()}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              {getUserBadge(getInitialsFromEmail(user.email), getColorFromRole(user.role))}
-                              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.email}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.role === 'superadmin' 
-                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                            }`}>
-                              <span className={`size-1.5 rounded-full ${
-                                user.role === 'superadmin' ? 'bg-rose-500' : 'bg-blue-500'
-                              }`}></span>
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.apis || 'Unlimited'}</td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(user.createdAt)}</td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
-                                </svg>
-                              </button>
-                              <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                          No users found
-                        </td>
-                      </tr>
-                    )
-                  ) : (
-                    apiRecords.map((record) => (
-                      <tr key={record.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{record.id}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            {getUserBadge(record.userInitials, record.userColor)}
-                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{record.userName}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono">{record.endpoint}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStatusBadge(record.status)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{record.dateCreated}</td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded transition-all">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
-                              </svg>
-                            </button>
-                            <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  {renderTableRows()}
                 </tbody>
               </table>
             </div>
@@ -522,10 +1104,7 @@ export default function DashboardPage() {
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {selectedApi === 'Get Users' 
-                  ? `Showing ${users.length} users`
-                  : 'Showing 1 to 5 of 24 records'
-                }
+                {getPaginationText()}
               </span>
               <div className="flex items-center gap-2">
                 <button className="p-1 rounded border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed">
@@ -557,7 +1136,7 @@ export default function DashboardPage() {
                 <h4 className="font-bold text-slate-900 dark:text-white">API Documentation</h4>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Learn how to integrate the <code className="bg-blue-500/10 px-1 rounded text-blue-500">
-                    {selectedApi === 'Get Users' ? 'GET /api/admin/users' : 'GET /users'}
+                    {getApiEndpoint()}
                   </code> endpoint into your application.
                 </p>
               </div>
