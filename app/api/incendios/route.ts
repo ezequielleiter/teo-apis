@@ -4,6 +4,8 @@ import { authOptions } from '../../../lib/auth-options';
 import { IncendioService } from '../../../lib/incendios';
 import { crearIncendioSchema, actualizarIncendioSchema, EstadoIncendio } from '../../../types/incendios';
 import { ZodIssue } from 'zod';
+import { withAPIAccess } from '../../../lib/helpers/auth-helpers';
+import { AvailableAPI } from '../../../types/auth';
 
 // GET /api/incendios - Obtener todos los incendios o filtrar por estado (público)
 export async function GET(request: NextRequest) {
@@ -46,11 +48,12 @@ export async function GET(request: NextRequest) {
 // POST /api/incendios - Crear un nuevo incendio
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    // Verificar permisos de acceso a la API de incendios
+    const accessCheck = await withAPIAccess(AvailableAPI.INCENDIOS);
+    if (accessCheck.error) {
       return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
+        { error: accessCheck.error },
+        { status: accessCheck.status }
       );
     }
 
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Crear el incendio
     const incendio = await IncendioService.crearIncendio(
       resultado.data,
-      session.user?.id
+      accessCheck.user?._id
     );
 
     return NextResponse.json({ 
@@ -93,11 +96,12 @@ export async function POST(request: NextRequest) {
 // PUT /api/incendios - Actualizar un incendio existente
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    // Verificar permisos de acceso a la API de incendios
+    const accessCheck = await withAPIAccess(AvailableAPI.INCENDIOS);
+    if (accessCheck.error) {
       return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
+        { error: accessCheck.error },
+        { status: accessCheck.status }
       );
     }
 
@@ -152,16 +156,17 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/incendios - Eliminar un incendio
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    // Verificar permisos de acceso a la API de incendios
+    const accessCheck = await withAPIAccess(AvailableAPI.INCENDIOS);
+    if (accessCheck.error) {
       return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
+        { error: accessCheck.error },
+        { status: accessCheck.status }
       );
     }
 
     // Solo SUPERADMIN puede eliminar incendios
-    if (session.user?.role !== 'superadmin') {
+    if (accessCheck.user?.role !== 'superadmin') {
       return NextResponse.json(
         { error: 'Permisos insuficientes. Solo SUPERADMIN puede eliminar incendios' },
         { status: 403 }

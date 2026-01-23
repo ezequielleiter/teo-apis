@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
-import { User, UserRole } from '@/types/auth';
+import { User, UserRole, AvailableAPI } from '@/types/auth';
 import { getCollection } from './helpers/mongo-helpers';
 
 export class UserService {
 
-  static async createUser(email: string, password: string, role: UserRole = UserRole.ADMIN, createdBy?: string, apis?: number): Promise<User | null> {
+  static async createUser(email: string, password: string, role: UserRole = UserRole.ADMIN, createdBy?: string, apis?: number, api_access?: AvailableAPI[]): Promise<User | null> {
     try {
       const collection = await getCollection("users");
       
@@ -27,7 +27,8 @@ export class UserService {
         createdAt: new Date(),
         updatedAt: new Date(),
         ...(createdBy && { createdBy }),
-        ...(apis !== undefined && { apis })
+        ...(apis !== undefined && { apis }),
+        ...(api_access && api_access.length > 0 && { api_access })
       };
 
       const result = await collection.insertOne(user);

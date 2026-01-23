@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { UserService } from '@/lib/auth';
-import { createUserSchema, UserRole } from '@/types/auth';
+import { createUserSchema, UserRole, AvailableAPI } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
       validated.password, 
       validated.role,
       currentUser._id,
-      validated.apis
+      validated.apis,
+      validated.api_access
     );
     
     if (!user) {

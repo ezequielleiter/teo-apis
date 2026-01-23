@@ -7,6 +7,8 @@ import {
   crearPuntoDonacionSchema, 
   filtrarPuntosDonacionSchema 
 } from '../../../types/puntos-donacion';
+import { withAPIAccess } from '../../../lib/helpers/auth-helpers';
+import { AvailableAPI } from '../../../types/auth';
 
 // GET /api/puntos-donacion - Obtener puntos de donación con filtros
 export async function GET(request: NextRequest) {
@@ -65,12 +67,12 @@ export async function GET(request: NextRequest) {
 // POST /api/puntos-donacion - Crear nuevo punto de donación
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user) {
+    // Verificar permisos de acceso a la API de puntos de donación
+    const accessCheck = await withAPIAccess(AvailableAPI.PUNTOS_DONACION);
+    if (accessCheck.error) {
       return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
+        { error: accessCheck.error },
+        { status: accessCheck.status }
       );
     }
 
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
     
     const puntoId = await PuntosDonacionService.crearPunto(
       datosValidos, 
-      session.user.id
+      accessCheck.user?._id || 'unknown'
     );
     
     return NextResponse.json(

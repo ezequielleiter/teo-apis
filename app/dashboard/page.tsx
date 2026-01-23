@@ -3,7 +3,8 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { AvailableAPI, UserRole } from '@/types/auth';
+import { getAvailableAPIs } from '@/lib/helpers/api-utils';
 
 interface ApiRecord {
   id: string;
@@ -160,7 +161,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [selectedApi, setSelectedApi] = useState('Get Users');
-  const [apiRecords, setApiRecords] = useState<ApiRecord[]>(mockApiRecords);
+  const [apiRecords] = useState<ApiRecord[]>(mockApiRecords);
   const [users, setUsers] = useState<User[]>([]);
   const [buffets, setBuffets] = useState<Buffet[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -169,6 +170,18 @@ export default function DashboardPage() {
   const [ordenes, setOrdenes] = useState<Orden[]>([]);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<number>>(new Set()); // All collapsed by default
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Modal states
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({
+    email: '',
+    password: '',
+    role: UserRole.ADMIN,
+    api_access: [] as AvailableAPI[]
+  });
+  const [createUserError, setCreateUserError] = useState('');
+  const [createUserSuccess, setCreateUserSuccess] = useState('');
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -931,6 +944,86 @@ export default function DashboardPage() {
     }
   };
 
+  // Funciones del modal de crear usuario
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingUser(true);
+    setCreateUserError('');
+    setCreateUserSuccess('');
+
+    try {
+      const payload: {
+        email: string;
+        password: string;
+        role: UserRole;
+        api_access?: AvailableAPI[];
+      } = {
+        email: createUserForm.email,
+        password: createUserForm.password,
+        role: createUserForm.role
+      };
+
+      // Solo agregar api_access si es admin y hay APIs seleccionadas
+      if (createUserForm.role === UserRole.ADMIN && createUserForm.api_access.length > 0) {
+        payload.api_access = createUserForm.api_access;
+      }
+
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCreateUserSuccess('Usuario creado exitosamente');
+        setCreateUserForm({
+          email: '',
+          password: '',
+          role: UserRole.ADMIN,
+          api_access: []
+        });
+        // Refrescar la lista de usuarios si estamos en esa vista
+        if (selectedApi === 'Get Users') {
+          fetchUsers();
+        }
+        // Cerrar modal después de 2 segundos
+        setTimeout(() => {
+          setShowCreateUserModal(false);
+          setCreateUserSuccess('');
+        }, 2000);
+      } else {
+        setCreateUserError(data.error || 'Error al crear usuario');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setCreateUserError('Error interno del servidor');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleApiAccessChange = (api: AvailableAPI, checked: boolean) => {
+    setCreateUserForm(prev => ({
+      ...prev,
+      api_access: checked 
+        ? [...prev.api_access, api]
+        : prev.api_access.filter(a => a !== api)
+    }));
+  };
+
+  const handleRoleChange = (role: UserRole) => {
+    setCreateUserForm(prev => ({
+      ...prev,
+      role,
+      // Limpiar api_access si cambia a superadmin
+      api_access: role === UserRole.SUPERADMIN ? [] : prev.api_access
+    }));
+  };
+
   return (
     <div className="min-h-screen flex overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
       {/* Left Sidebar */}
@@ -1062,13 +1155,10 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                </svg>
-                Export
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+              <button 
+                onClick={() => setShowCreateUserModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
+              >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
                 </svg>
@@ -1147,6 +1237,185 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Crear Usuario */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Crear Nuevo Usuario</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateUserModal(false);
+                    setCreateUserError('');
+                    setCreateUserSuccess('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateUserSubmit} className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={createUserForm.email}
+                    onChange={(e) => setCreateUserForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={createUserForm.password}
+                    onChange={(e) => setCreateUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Rol
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                      <input
+                        type="radio"
+                        name="role"
+                        value={UserRole.ADMIN}
+                        checked={createUserForm.role === UserRole.ADMIN}
+                        onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+                        className="text-blue-500 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-medium text-slate-900 dark:text-white">Admin</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Acceso limitado a APIs específicas</div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                      <input
+                        type="radio"
+                        name="role"
+                        value={UserRole.SUPERADMIN}
+                        checked={createUserForm.role === UserRole.SUPERADMIN}
+                        onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+                        className="text-blue-500 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-medium text-slate-900 dark:text-white">Super Admin</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Acceso completo a todas las APIs</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* API Access - Solo para Admin */}
+                {createUserForm.role === UserRole.ADMIN && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Acceso a APIs
+                    </label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {getAvailableAPIs().map((api) => (
+                        <label key={api.value} className="flex items-start gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={createUserForm.api_access.includes(api.value)}
+                            onChange={(e) => handleApiAccessChange(api.value, e.target.checked)}
+                            className="mt-0.5 text-blue-500 focus:ring-blue-500 rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">{api.label}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">{api.description}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {createUserForm.api_access.length === 0 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        ⚠️ Los usuarios admin deben tener al menos una API asignada
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {createUserError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-red-700 dark:text-red-400">{createUserError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {createUserSuccess && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.41,10.09L6,11.5L11,16.5Z"/>
+                      </svg>
+                      <span className="text-sm text-green-700 dark:text-green-400">{createUserSuccess}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateUserModal(false);
+                      setCreateUserError('');
+                      setCreateUserSuccess('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingUser || (createUserForm.role === UserRole.ADMIN && createUserForm.api_access.length === 0)}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    {isCreatingUser ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creando...
+                      </>
+                    ) : (
+                      'Crear Usuario'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
