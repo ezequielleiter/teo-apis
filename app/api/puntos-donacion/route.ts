@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../lib/auth-options';
 import { PuntosDonacionService } from '../../../lib/puntos-donacion';
 import { 
   crearPuntoDonacionSchema, 
