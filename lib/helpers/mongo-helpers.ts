@@ -3,7 +3,7 @@ import clientPromise from "../mongodb";
 export async function  getCollection(collection: string) {
     try {
       const client = await clientPromise;
-      return client.db('matafuego-solidario').collection(collection);
+      return client.db('teo-apis').collection(collection);
     } catch (error) {
       console.error('MongoDB connection error:', error);
       if (error instanceof Error) {

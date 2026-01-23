@@ -1,12 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
+@plugin "daisyui";
 
 :root {
-  --background: #ffffff;
-  --foreground: #111318;
-  --primary: #ef4444;
-  --background-light: #f6f6f8;
-  --background-dark: #101622;
+  --background: #f6f5f2;
+  --foreground: #1b202d;
+  --primary: #0c6cfc;
+  --primary-hover: #72a0fd;
+  --primary-light: #93b6fd;
+  --secondary: #fc8d32;
+  --secondary-hover: #fc7100;
+  --background-light: #f6f5f2;
+  --background-dark: #1b202d;
+  --dark: #1b202d;
+  --dark-lighter: #2a3441;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -18,8 +25,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #101622;
-    --foreground: #ffffff;
+    --background: #1b202d;
+    --foreground: #f6f5f2;
   }
 }
 
@@ -38,12 +45,56 @@ body {
     color: var(--primary);
   }
   
+  .text-primary-light {
+    color: var(--primary-light);
+  }
+  
+  .text-secondary {
+    color: var(--secondary);
+  }
+  
+  .text-dark {
+    color: var(--dark);
+  }
+  
   .bg-primary {
     background-color: var(--primary);
   }
   
+  .bg-primary-hover {
+    background-color: var(--primary-hover);
+  }
+  
+  .bg-primary-light {
+    background-color: var(--primary-light);
+  }
+  
+  .bg-secondary {
+    background-color: var(--secondary);
+  }
+  
+  .bg-secondary-hover {
+    background-color: var(--secondary-hover);
+  }
+  
+  .bg-dark {
+    background-color: var(--dark);
+  }
+  
+  .bg-dark-lighter {
+    background-color: var(--dark-lighter);
+  }
+  
   .border-primary {
     border-color: var(--primary);
+  }
+  
+  .border-secondary {
+    border-color: var(--secondary);
+  }
+  
+  .border-dark {
+    border-color: var(--dark);
   }
   
   .bg-background-light {
@@ -57,7 +108,7 @@ body {
   /* Estilos personalizados para scrollbar */
   .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #f97316 #374151;
+    scrollbar-color: var(--primary) var(--dark-lighter);
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -65,22 +116,22 @@ body {
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: #374151;
+    background: var(--dark-lighter);
     border-radius: 4px;
     margin-left: 4px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #f97316;
+    background: var(--primary);
     border-radius: 4px;
     margin-left: 4px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #ea580c;
+    background: var(--primary-hover);
   }
 
   .custom-scrollbar::-webkit-scrollbar-corner {
-    background: #1f2937;
+    background: var(--dark);
   }
 }

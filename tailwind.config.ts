@@ -10,9 +10,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#ef4444",
-        "background-light": "#f6f6f8", 
-        "background-dark": "#101622",
+        primary: {
+          DEFAULT: "#0c6cfc",
+          hover: "#72a0fd",
+          light: "#93b6fd",
+        },
+        secondary: {
+          DEFAULT: "#fc8d32",
+          hover: "#fc7100",
+        },
+        dark: {
+          DEFAULT: "#1b202d",
+          lighter: "#2a3441",
+        },
+        light: {
+          DEFAULT: "#f6f5f2",
+          blue: "#93b6fd",
+        },
+        "background-light": "#f6f5f2", 
+        "background-dark": "#1b202d",
       },
       fontFamily: {
         display: ["Inter", "sans-serif"],

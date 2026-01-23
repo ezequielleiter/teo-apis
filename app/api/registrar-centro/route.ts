@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Preparar el contenido del email
     const emailContent = `
-NUEVO REGISTRO DE CENTRO DE DONACIÓN - MATAFUEGO SOLIDARIO
+NUEVO REGISTRO DE CENTRO
 
 📋 DATOS DEL RESPONSABLE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -27,12 +27,6 @@ Teléfono: ${telefono}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${ubicacion}
 
-🔥 CONTEXTO DE EMERGENCIA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Este registro se realizó a través del sistema de emergencia 
-Matafuego Solidario para coordinar ayuda durante los incendios
-forestales en la Patagonia.
-
 📅 Fecha de registro: ${new Date().toLocaleString('es-AR', {
   timeZone: 'America/Argentina/Buenos_Aires'
 })}
@@ -41,14 +35,10 @@ forestales en la Patagonia.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Por favor, contactar a la brevedad para coordinar:
 1. Verificación del centro
-2. Logística de donaciones
-3. Protocolos de seguridad
-4. Integración al sistema
-
-Para emergencias inmediatas: 100 (Bomberos) | 911 (Emergencias)
+2. Procedimientos necesarios
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Sistema Matafuego Solidario - Coordinación de Ayuda de Emergencia
+Sistema TEO APIs - Gestión de Registros
 `;
 
     // En un entorno de producción, aquí usarías un servicio de email como SendGrid, Resend, etc.
@@ -63,9 +53,9 @@ Sistema Matafuego Solidario - Coordinación de Ayuda de Emergencia
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Matafuego Solidario <noreply@matafuegosolidario.org>',
+        from: 'TEO APIs <noreply@teo.org>',
         to: ['info@teocoop.site'],
-        subject: '🔥 URGENTE: Nuevo Centro de Donación Registrado',
+        subject: 'Nuevo Centro Registrado',
         text: emailContent,
       }),
     });
