@@ -122,7 +122,7 @@ export class OrdenesService {
     if (!buffetExiste) {
       throw new Error('El buffet especificado no existe');
     }
-
+ 
     // Validar que el evento existe y pertenece al buffet
     const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id);
     if (!eventoValido) {

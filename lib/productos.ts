@@ -166,7 +166,7 @@ export class ProductosService {
       query = addUserFilters(session || null, query);
       
       const producto = await collection.findOne(query as unknown as Filter<Producto>);
-      
+
       if (!producto) {
         return null;
       }

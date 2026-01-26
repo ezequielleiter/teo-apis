@@ -28,8 +28,7 @@ export class PromosService {
     try {
       for (const producto_id of productos_ids) {
         const producto = await ProductosService.obtenerProductoPorId(producto_id);
-        console.log(producto);
-        
+
         if (!producto || producto.buffet_id !== buffet_id) {
           return false;
         }

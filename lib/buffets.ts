@@ -2,6 +2,8 @@ import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import { Buffet, CrearBuffetData, FiltrarBuffetsData } from '../types/buffets';
 import { addUserFilters } from './helpers/permissions';
+import { authOptions } from './auth-options';
+import { getServerSession } from 'next-auth';
 
 export class BuffetsService {
   private static async getCollection(): Promise<Collection<Buffet>> {
@@ -88,9 +90,9 @@ export class BuffetsService {
   // Obtener un buffet por ID
   static async obtenerBuffetPorId(
     id: string,
-    session?: { user: { id: string; role: string } } | null
   ): Promise<Buffet | null> {
     const collection = await this.getCollection();
+    const session = await getServerSession(authOptions);
     
     try {
       const objectId = new ObjectId(id);
