@@ -140,6 +140,7 @@ export class BuffetsService {
       
       // Aplicar filtros de usuario según permisos
       query = addUserFilters(session || null, query);
+      console.log(query);
       
       return await collection.findOne(query as unknown as Filter<Buffet>);
     } catch {

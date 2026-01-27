@@ -170,7 +170,6 @@ export class EventosService {
       if (!evento) {
         return null;
       }
-
       // Obtener datos del buffet
       const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id, session);
       

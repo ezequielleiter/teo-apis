@@ -38,9 +38,9 @@ export class OrdenesService {
   }
 
   // Validar que el evento existe y pertenece al buffet
-  private static async validarEvento(evento_id: string, buffet_id: string): Promise<boolean> {
+  private static async validarEvento(evento_id: string, buffet_id: string, session): Promise<boolean> {
     try {
-      const evento = await EventosService.obtenerEventoPorId(evento_id);
+      const evento = await EventosService.obtenerEventoPorId(evento_id, session);
       return evento !== null && evento.buffet_id === buffet_id;
     } catch {
       return false;
@@ -105,10 +105,10 @@ export class OrdenesService {
     productos: ItemProducto[], 
     session?: { user: { id: string; role: string } } | null
   ): Promise<boolean> {
-    try {
+    try {      
       for (const item of productos) {
         if (item.tipo === 'producto') {
-          const producto = await ProductosService.obtenerProductoPorId(item.id);
+          const producto = await ProductosService.obtenerProductoPorId(item.id, session);
           if (!producto || producto.buffet_id !== buffet_id) {
             return false;
           }
@@ -135,9 +135,9 @@ export class OrdenesService {
     if (!buffetExiste) {
       throw new Error('El buffet especificado no existe');
     }
- 
+    
     // Validar que el evento existe y pertenece al buffet
-    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id);
+    const eventoValido = await this.validarEvento(data.evento_id, data.buffet_id, session);
     if (!eventoValido) {
       throw new Error('El evento especificado no existe o no pertenece al buffet');
     }

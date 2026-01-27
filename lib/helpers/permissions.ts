@@ -97,7 +97,7 @@ export function addUserFilters(
 
   // Si es admin, solo puede ver sus propios recursos
   if (user.role === UserRole.ADMIN) {
-    return { ...baseQuery, user_id: user.id };
+    return { ...baseQuery, user_id: user.id.toString() };
   }
 
   // Por defecto, no mostrar nada
