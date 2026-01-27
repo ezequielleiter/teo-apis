@@ -38,7 +38,7 @@ export class OrdenesService {
   }
 
   // Validar que el evento existe y pertenece al buffet
-  private static async validarEvento(evento_id: string, buffet_id: string, session): Promise<boolean> {
+  private static async validarEvento(evento_id: string, buffet_id: string, session?: { user: { id: string; role: string } } | null): Promise<boolean> {
     try {
       const evento = await EventosService.obtenerEventoPorId(evento_id, session);
       return evento !== null && evento.buffet_id === buffet_id;
