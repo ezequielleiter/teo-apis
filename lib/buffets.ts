@@ -2,8 +2,6 @@ import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import { Buffet, CrearBuffetData, FiltrarBuffetsData } from '../types/buffets';
 import { addUserFilters } from './helpers/permissions';
-import { authOptions } from './auth-options';
-import { getServerSession } from 'next-auth';
 
 export class BuffetsService {
   private static async getCollection(): Promise<Collection<Buffet>> {
@@ -36,7 +34,7 @@ export class BuffetsService {
   // Obtener todos los buffets con filtros opcionales
   static async obtenerBuffets(
     filtros: FiltrarBuffetsData = {},
-    session?: { user: { id: string; role: string } } | null
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
   ): Promise<{
     buffets: Buffet[];
     total: number;
@@ -87,12 +85,54 @@ export class BuffetsService {
     };
   }
 
+    // Obtener todos los buffets con filtros opcionales
+  static async obtenerBuffetsPorCliente(
+    filtros: FiltrarBuffetsData = {},
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
+  ): Promise<{
+    buffets: Buffet[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    const collection = await this.getCollection();
+    
+    // Construir query de MongoDB
+    let query: Record<string, unknown> = {};    
+    // Aplicar filtros de usuario según permisos
+    query = addUserFilters(session || null, query);
+
+    // Paginación
+    const limite = filtros.limite || 20;
+    const pagina = filtros.pagina || 1;
+    const skip = (pagina - 1) * limite;
+
+    // Ejecutar consultas en paralelo
+    const [buffets, total] = await Promise.all([
+      collection
+        .find(query)
+        .sort({ fechaCreacion: -1 })
+        .skip(skip)
+        .limit(limite)
+        .toArray(),
+      collection.countDocuments(query)
+    ]);
+
+    return {
+      buffets,
+      total,
+      pagina,
+      totalPaginas: Math.ceil(total / limite)
+    };
+  }
+
+
   // Obtener un buffet por ID
   static async obtenerBuffetPorId(
     id: string,
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
   ): Promise<Buffet | null> {
     const collection = await this.getCollection();
-    const session = await getServerSession(authOptions);
     
     try {
       const objectId = new ObjectId(id);
@@ -111,7 +151,7 @@ export class BuffetsService {
   static async actualizarBuffet(
     id: string, 
     data: Partial<CrearBuffetData>,
-    session?: { user: { id: string; role: string } } | null
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
   ): Promise<Buffet | null> {
     const collection = await this.getCollection();
     
@@ -141,7 +181,7 @@ export class BuffetsService {
   // Eliminar un buffet
   static async eliminarBuffet(
     id: string,
-    session?: { user: { id: string; role: string } } | null
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
   ): Promise<boolean> {
     const collection = await this.getCollection();
     
@@ -177,3 +217,4 @@ export const obtenerBuffets = BuffetsService.obtenerBuffets.bind(BuffetsService)
 export const obtenerBuffetPorId = BuffetsService.obtenerBuffetPorId.bind(BuffetsService);
 export const actualizarBuffet = BuffetsService.actualizarBuffet.bind(BuffetsService);
 export const eliminarBuffet = BuffetsService.eliminarBuffet.bind(BuffetsService);
+export const obtenerBuffetsPorCliente = BuffetsService.obtenerBuffetsPorCliente.bind(BuffetsService);

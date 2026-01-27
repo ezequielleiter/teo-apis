@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn, getSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -46,7 +46,7 @@ export default function LoginPage() {
     } catch (error) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Partial<LoginForm> = {};
-        error.errors.forEach((err) => {
+        error.issues.forEach((err) => {
           if (err.path[0]) {
             fieldErrors[err.path[0] as keyof LoginForm] = err.message;
           }
@@ -66,7 +66,6 @@ export default function LoginPage() {
     setGeneralError('');
 
     try {
-        console.log(formData);
         
       const result = await signIn('credentials', {
         email: formData.email,
@@ -81,6 +80,7 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (error) {
+      console.error('Login error:', error);
       setGeneralError('Error de conexión. Inténtalo nuevamente.');
     } finally {
       setIsLoading(false);

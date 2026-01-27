@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../../lib/auth-options';
 import { OrdenesService } from '../../../../lib/ordenes';
 import { 
   crearOrdenSchema,
@@ -9,25 +7,18 @@ import {
   EstadoOrden,
   FormaPago
 } from '../../../../types/ordenes';
+import { requireAuth } from '../../../../lib/helpers/jwt-auth';
 
 // GET /api/admin-buffets/ordenes - Obtener todas las órdenes
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     
@@ -91,8 +82,17 @@ export async function GET(request: NextRequest) {
     // Validar parámetros
     const filtrosValidados = filtrarOrdenesSchema.parse(filtros);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Obtener órdenes
-    const resultado = await OrdenesService.obtenerOrdenes(filtrosValidados, session);
+    const resultado = await OrdenesService.obtenerOrdenes(filtrosValidados, sessionCompatible);
 
     return NextResponse.json(resultado);
 
@@ -126,35 +126,36 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-buffets/ordenes - Crear una nueva orden
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     
     // Agregar user_id del usuario actual
     const bodyConUserId = {
       ...body,
-      user_id: session.user.id
+      user_id: user.id
     };
     
     // Validar datos
     const datosValidados = crearOrdenSchema.parse(bodyConUserId);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Crear orden
-    const nuevaOrden = await OrdenesService.crearOrden(datosValidados, session);
+    const nuevaOrden = await OrdenesService.crearOrden(datosValidados, sessionCompatible);
 
     return NextResponse.json(
       { 

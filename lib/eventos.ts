@@ -3,8 +3,6 @@ import clientPromise from './mongodb';
 import { Evento, EventoConBuffet, CrearEventoData, FiltrarEventosData } from '../types/eventos';
 import { BuffetsService } from './buffets';
 import { addUserFilters } from './helpers/permissions';
-import { getServerSession } from 'next-auth';
-import { authOptions } from './auth-options';
 
 export class EventosService {
   private static async getCollection(): Promise<Collection<Evento>> {
@@ -157,9 +155,9 @@ export class EventosService {
   // Obtener un evento por ID
   static async obtenerEventoPorId(
     id: string,
+    session?: { user: { id: string; role: string } } | null
   ): Promise<EventoConBuffet | null> {
     const collection = await this.getCollection();
-    const session = await getServerSession(authOptions);
     try {
       const objectId = new ObjectId(id);
       let query: Record<string, unknown> = { _id: objectId };
@@ -174,7 +172,7 @@ export class EventosService {
       }
 
       // Obtener datos del buffet
-      const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id);
+      const buffet = await BuffetsService.obtenerBuffetPorId(evento.buffet_id, session);
       
       return {
         ...evento,

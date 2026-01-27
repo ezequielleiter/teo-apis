@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../../lib/auth-options';
 import { PromosService } from '../../../../lib/promos';
 import { 
   crearPromoSchema,
   filtrarPromosSchema 
 } from '../../../../types/promos';
+import { requireAuth } from '../../../../lib/helpers/jwt-auth';
+import { UserRole } from '../../../../types/auth';
 
 // GET /api/admin-buffets/promos - Obtener todas las promos
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
 
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
+    if (authResult instanceof Response) {
+      return authResult; // Error de autenticación o autorización
     }
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     
@@ -63,8 +55,17 @@ export async function GET(request: NextRequest) {
     // Validar parámetros
     const filtrosValidados = filtrarPromosSchema.parse(filtros);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as UserRole // Cast para compatibilidad con UserRole enum
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Obtener promos
-    const resultado = await PromosService.obtenerPromos(filtrosValidados, session);
+    const resultado = await PromosService.obtenerPromos(filtrosValidados, sessionCompatible);
 
     return NextResponse.json(resultado);
 
@@ -98,35 +99,27 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-buffets/promos - Crear una nueva promo
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult; // Error de autenticación o autorización
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     
     // Agregar user_id del usuario actual
     const bodyConUserId = {
       ...body,
-      user_id: session.user.id
+      user_id: user.id
     };
     
     // Validar datos
     const datosValidados = crearPromoSchema.parse(bodyConUserId);
-
+    
     // Crear promo
-    const nuevaPromo = await PromosService.crearPromo(datosValidados, session);
+    const nuevaPromo = await PromosService.crearPromo(datosValidados, authResult);
 
     return NextResponse.json(
       { 

@@ -1,11 +1,9 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
-import { Session } from 'next-auth';
 import clientPromise from './mongodb';
 import { Promo, PromoConDetalles, CrearPromoData, FiltrarPromosData } from '../types/promos';
 import { BuffetsService } from './buffets';
 import { ProductosService } from './productos';
 import { addUserFilters } from './helpers/permissions';
-
 export class PromosService {
   private static async getCollection(): Promise<Collection<Promo>> {
     const client: MongoClient = await clientPromise;
@@ -14,7 +12,10 @@ export class PromosService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string, session?: Session | null): Promise<boolean> {
+  private static async validarBuffetExiste(
+    buffet_id: string, 
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
+  ): Promise<boolean> {
     try {
       const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
@@ -24,10 +25,14 @@ export class PromosService {
   }
 
   // Validar que los productos existen y pertenecen al buffet
-  private static async validarProductos(buffet_id: string, productos_ids: string[]): Promise<boolean> {
+  private static async validarProductos(
+    buffet_id: string, 
+    productos_ids: string[], 
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
+  ): Promise<boolean> {
     try {
       for (const producto_id of productos_ids) {
-        const producto = await ProductosService.obtenerProductoPorId(producto_id);
+        const producto = await ProductosService.obtenerProductoPorId(producto_id, session);
 
         if (!producto || producto.buffet_id !== buffet_id) {
           return false;
@@ -40,10 +45,13 @@ export class PromosService {
   }
 
   // Obtener detalles de productos para una promo
-  private static async obtenerDetallesProductos(productos_ids: string[]) {
+  private static async obtenerDetallesProductos(
+    productos_ids: string[], 
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
+  ) {
     const productosDetalles = await Promise.all(
       productos_ids.map(async (producto_id) => {
-        const producto = await ProductosService.obtenerProductoPorId(producto_id);
+        const producto = await ProductosService.obtenerProductoPorId(producto_id, session);
         return producto ? {
           _id: producto._id!,
           nombre: producto.nombre,
@@ -57,17 +65,18 @@ export class PromosService {
   }
 
   // Crear una nueva promo
-  static async crearPromo(data: CrearPromoData, session?: Session | null): Promise<PromoConDetalles> {
+  static async crearPromo(
+    data: CrearPromoData,
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
+  ): Promise<PromoConDetalles> {
     // Validar que el buffet existe
+    
     const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
       throw new Error('El buffet especificado no existe');
     }
 
-    // Validar que todos los productos existen y pertenecen al buffet
-    console.log(data);
-    
-    const productosValidos = await this.validarProductos(data.buffet_id, data.productos);
+    const productosValidos = await this.validarProductos(data.buffet_id, data.productos, session);
     if (!productosValidos) {
       throw new Error('Uno o más productos no existen o no pertenecen al buffet especificado');
     }
@@ -94,8 +103,8 @@ export class PromosService {
 
     // Obtener datos del buffet y productos para retornar promo completa
     const [buffet, productosDetalles] = await Promise.all([
-      BuffetsService.obtenerBuffetPorId(promoCreada.buffet_id),
-      this.obtenerDetallesProductos(promoCreada.productos)
+      BuffetsService.obtenerBuffetPorId(promoCreada.buffet_id, session),
+      this.obtenerDetallesProductos(promoCreada.productos, session)
     ]);
 
     const valorTotalProductos = productosDetalles.reduce((total, producto) => total + producto.valor, 0);
@@ -118,7 +127,7 @@ export class PromosService {
   // Obtener todas las promos con filtros opcionales
   static async obtenerPromos(
     filtros: FiltrarPromosData = {},
-    session?: Session | null
+    session?: { user: { id: string; role: string; buffet_id?: string } } | null
   ): Promise<{
     promos: PromoConDetalles[];
     total: number;
@@ -175,8 +184,8 @@ export class PromosService {
     const promosConDetalles: PromoConDetalles[] = await Promise.all(
       promos.map(async (promo) => {
         const [buffet, productosDetalles] = await Promise.all([
-          BuffetsService.obtenerBuffetPorId(promo.buffet_id),
-          this.obtenerDetallesProductos(promo.productos)
+          BuffetsService.obtenerBuffetPorId(promo.buffet_id, session),
+          this.obtenerDetallesProductos(promo.productos, session)
         ]);
 
         const valorTotalProductos = productosDetalles.reduce((total, producto) => total + producto.valor, 0);
@@ -206,7 +215,10 @@ export class PromosService {
   }
 
   // Obtener una promo por ID
-  static async obtenerPromoPorId(id: string, session?: Session | null): Promise<PromoConDetalles | null> {
+  static async obtenerPromoPorId(
+    id: string, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<PromoConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
@@ -226,7 +238,7 @@ export class PromosService {
       // Obtener datos del buffet y productos
       const [buffet, productosDetalles] = await Promise.all([
         BuffetsService.obtenerBuffetPorId(promo.buffet_id, session),
-        this.obtenerDetallesProductos(promo.productos)
+        this.obtenerDetallesProductos(promo.productos, session)
       ]);
 
       const valorTotalProductos = productosDetalles.reduce((total, producto) => total + producto.valor, 0);
@@ -250,7 +262,11 @@ export class PromosService {
   }
 
   // Actualizar una promo
-  static async actualizarPromo(id: string, data: Partial<CrearPromoData>, session?: Session | null): Promise<PromoConDetalles | null> {
+  static async actualizarPromo(
+    id: string, 
+    data: Partial<CrearPromoData>, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<PromoConDetalles | null> {
     // Si se está actualizando el buffet_id, validar que existe
     if (data.buffet_id) {
       const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
@@ -263,7 +279,7 @@ export class PromosService {
     if (data.productos) {
       const buffet_id = data.buffet_id || (await this.obtenerPromoPorId(id, session))?.buffet_id;
       if (buffet_id) {
-        const productosValidos = await this.validarProductos(buffet_id, data.productos);
+        const productosValidos = await this.validarProductos(buffet_id, data.productos, session);
         if (!productosValidos) {
           throw new Error('Uno o más productos no existen o no pertenecen al buffet especificado');
         }
@@ -292,7 +308,12 @@ export class PromosService {
   }
 
   // Eliminar una promo
-  static async eliminarPromo(id: string, session?: Session | null): Promise<boolean> {
+  static async eliminarPromo(
+    id: string, 
+    session?: { user: { id: string; role: string } } | null,
+    buffet?: {_id: string}
+  ): Promise<boolean> {
+
     const collection = await this.getCollection();
     
     try {
@@ -304,7 +325,7 @@ export class PromosService {
         if (!promo) {
           throw new Error('Promoción no encontrada');
         }
-        await this.validateUserPermissions(promo.buffet_id, session);
+        await this.validateUserPermissions(promo.buffet_id, session, buffet);
       }
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -329,9 +350,14 @@ export class PromosService {
   }
 
   // Validar permisos de usuario para un buffet específico
-  private static async validateUserPermissions(buffet_id: string | undefined, session: Session): Promise<void> {
+  private static async validateUserPermissions(
+    buffet_id: string | undefined, 
+    session: { user: { id: string; role: string; buffet_id?: string } },
+    user_buffet?: {_id: string}
+  ): Promise<void> {
+
     if (!buffet_id) {
-      throw new Error('ID de buffet requerido para validar permisos');
+      throw new Error('ID de buffet requerido para validar permisos (buffet_id faltante en la promo)');
     }
 
     // Verificar si el usuario es superadmin
@@ -340,9 +366,15 @@ export class PromosService {
     }
 
     // Verificar si el usuario es admin del buffet específico
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (session.user?.role === 'admin' && (session.user as any)?.buffet_id === buffet_id) {
-      return; // Admin del buffet tiene acceso
+    if (session.user?.role === 'admin') {
+      if (!user_buffet?._id) {
+        throw new Error('No se encontró buffet asociado al usuario administrador para validar permisos');
+      }
+      if (user_buffet._id.toString() === buffet_id) {
+        return; // Admin del buffet tiene acceso
+      } else {
+        throw new Error('El usuario administrador no tiene acceso a este buffet (mismatch de buffet_id)');
+      }
     }
 
     throw new Error('No tienes permisos para realizar esta acción en este buffet');

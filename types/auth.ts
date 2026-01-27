@@ -20,6 +20,7 @@ export interface User {
   email: string;
   password: string;
   role: UserRole;
+  buffet_id?: string; // ID del buffet asociado (para usuarios admin)
   apis?: number; // Number of APIs the user can access (legacy field for superadmin)
   api_access?: AvailableAPI[]; // Specific APIs the user can access (for admin users)
   createdAt?: Date;

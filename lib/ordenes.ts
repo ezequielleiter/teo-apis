@@ -25,7 +25,10 @@ export class OrdenesService {
   }
 
   // Validar que el buffet existe
-  private static async validarBuffetExiste(buffet_id: string, session?: Session | null): Promise<boolean> {
+  private static async validarBuffetExiste(
+    buffet_id: string, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     try {
       const buffet = await BuffetsService.obtenerBuffetPorId(buffet_id, session);
       return buffet !== null;
@@ -45,7 +48,10 @@ export class OrdenesService {
   }
 
   // Expandir productos de una orden (incluye productos de promos)
-  private static async expandirProductos(productos: ItemProducto[], session?: Session | null): Promise<ProductoExpandido[]> {
+  private static async expandirProductos(
+    productos: ItemProducto[], 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<ProductoExpandido[]> {
     const productosExpandidos: ProductoExpandido[] = [];
 
     for (const item of productos) {
@@ -94,7 +100,11 @@ export class OrdenesService {
   }
 
   // Validar productos y promos de una orden
-  private static async validarProductosYPromos(buffet_id: string, productos: ItemProducto[], session?: Session | null): Promise<boolean> {
+  private static async validarProductosYPromos(
+    buffet_id: string, 
+    productos: ItemProducto[], 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     try {
       for (const item of productos) {
         if (item.tipo === 'producto') {
@@ -116,7 +126,10 @@ export class OrdenesService {
   }
 
   // Crear una nueva orden
-  static async crearOrden(data: CrearOrdenData, session?: Session | null): Promise<OrdenConDetalles> {
+  static async crearOrden(
+    data: CrearOrdenData, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<OrdenConDetalles> {
     // Validar que el buffet existe
     const buffetExiste = await this.validarBuffetExiste(data.buffet_id, session);
     if (!buffetExiste) {
@@ -186,7 +199,7 @@ export class OrdenesService {
   // Obtener todas las órdenes con filtros opcionales
   static async obtenerOrdenes(
     filtros: FiltrarOrdenesData = {},
-    session?: Session | null
+    session?: { user: { id: string; role: string } } | null
   ): Promise<{
     ordenes: OrdenConDetalles[];
     total: number;
@@ -294,7 +307,10 @@ export class OrdenesService {
   }
 
   // Obtener una orden por ID
-  static async obtenerOrdenPorId(id: string, session?: Session | null): Promise<OrdenConDetalles | null> {
+  static async obtenerOrdenPorId(
+    id: string, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<OrdenConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
@@ -359,7 +375,11 @@ export class OrdenesService {
   }
 
   // Actualizar una orden
-  static async actualizarOrden(id: string, data: Partial<CrearOrdenData>, session?: Session | null): Promise<OrdenConDetalles | null> {
+  static async actualizarOrden(
+    id: string, 
+    data: Partial<CrearOrdenData>, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<OrdenConDetalles | null> {
     const collection = await this.getCollection();
     
     try {
@@ -389,7 +409,10 @@ export class OrdenesService {
   }
 
   // Eliminar una orden
-  static async eliminarOrden(id: string, session?: Session | null): Promise<boolean> {
+  static async eliminarOrden(
+    id: string, 
+    session?: { user: { id: string; role: string } } | null
+  ): Promise<boolean> {
     const collection = await this.getCollection();
     
     try {
@@ -436,7 +459,10 @@ export class OrdenesService {
   }
 
   // Validar permisos de usuario para un buffet específico
-  private static async validateUserPermissions(buffet_id: string | undefined, session: Session): Promise<void> {
+  private static async validateUserPermissions(
+    buffet_id: string | undefined, 
+    session: { user: { id: string; role: string } }
+  ): Promise<void> {
     if (!buffet_id) {
       throw new Error('ID de buffet requerido para validar permisos');
     }

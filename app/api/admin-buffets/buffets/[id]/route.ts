@@ -1,23 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth-options';
 import { actualizarBuffet, eliminarBuffet, obtenerBuffetPorId } from '@/lib/buffets';
 import { actualizarBuffetSchema } from '@/types/buffets';
+import { requireAuth } from '@/lib/helpers/jwt-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    const buffet = await obtenerBuffetPorId(id, session);
+    const buffet = await obtenerBuffetPorId(id, sessionCompatible);
     
     if (!buffet) {
       return NextResponse.json({ error: 'Buffet no encontrado' }, { status: 404 });
@@ -37,17 +39,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
     const body = await request.json();
     const validatedData = actualizarBuffetSchema.parse(body);
 
-    const buffetActualizado = await actualizarBuffet(id, validatedData, session);
+    const buffetActualizado = await actualizarBuffet(id, validatedData, sessionCompatible);
 
     return NextResponse.json({ 
       buffet: buffetActualizado,
@@ -72,14 +77,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    const eliminado = await eliminarBuffet(id, session);
+    const eliminado = await eliminarBuffet(id, sessionCompatible);
 
     if (!eliminado) {
       return NextResponse.json({ 

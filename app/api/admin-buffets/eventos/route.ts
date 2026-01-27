@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../../lib/auth-options';
 import { EventosService } from '../../../../lib/eventos';
 import { 
   crearEventoSchema,
   filtrarEventosSchema 
 } from '../../../../types/eventos';
+import { requireAuth } from '../../../../lib/helpers/jwt-auth';
+import { UserRole } from '../../../../types/auth';
 
 // GET /api/admin-buffets/eventos - Obtener todos los eventos
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     
@@ -63,8 +55,17 @@ export async function GET(request: NextRequest) {
     // Validar parámetros
     const filtrosValidados = filtrarEventosSchema.parse(filtros);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as UserRole // Cast para compatibilidad
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Obtener eventos
-    const resultado = await EventosService.obtenerEventos(filtrosValidados, session);
+    const resultado = await EventosService.obtenerEventos(filtrosValidados, sessionCompatible);
 
     return NextResponse.json(resultado);
 
@@ -98,35 +99,36 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-buffets/eventos - Crear un nuevo evento
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult; // Error de autenticación o autorización
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     
-    // Determinar user_id: usar el enviado si existe, sino el de la sesión actual
+    // Determinar user_id: usar el enviado si existe, sino el del usuario actual
     const bodyConUserId = {
       ...body,
-      user_id: body.user_id || session.user.id
+      user_id: body.user_id || user.id
     };
     
     // Validar datos
     const datosValidados = crearEventoSchema.parse(bodyConUserId);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as UserRole // Cast para compatibilidad
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Crear evento
-    const nuevoEvento = await EventosService.crearEvento(datosValidados, session);
+    const nuevoEvento = await EventosService.crearEvento(datosValidados, sessionCompatible);
 
     return NextResponse.json(
       { 

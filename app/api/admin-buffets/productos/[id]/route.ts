@@ -1,22 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth-options';
 import { obtenerProductoPorId, actualizarProducto, eliminarProducto } from '@/lib/productos';
+import { requireAuth } from '@/lib/helpers/jwt-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    const producto = await obtenerProductoPorId(id, session);
+    const producto = await obtenerProductoPorId(id, sessionCompatible);
     
     if (!producto) {
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
@@ -36,16 +38,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
     const body = await request.json();
 
-    const productoActualizado = await actualizarProducto(id, body, session);
+    const productoActualizado = await actualizarProducto(id, body, sessionCompatible);
 
     return NextResponse.json({ 
       producto: productoActualizado,
@@ -64,14 +69,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    await eliminarProducto(id, session);
+    await eliminarProducto(id, sessionCompatible);
 
     return NextResponse.json({ 
       message: 'Producto eliminado exitosamente' 

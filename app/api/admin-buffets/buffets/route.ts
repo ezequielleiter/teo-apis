@@ -1,31 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../../lib/auth-options';
 import { BuffetsService } from '../../../../lib/buffets';
 import { 
   crearBuffetSchema,
   filtrarBuffetsSchema 
 } from '../../../../types/buffets';
+import { requireAuth } from '../../../../lib/helpers/jwt-auth';
 
 // GET /api/admin-buffets/buffets - Obtener todos los buffets
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     
@@ -51,8 +42,17 @@ export async function GET(request: NextRequest) {
     // Validar parámetros
     const filtrosValidados = filtrarBuffetsSchema.parse(filtros);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as any // Cast para compatibilidad
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Obtener buffets
-    const resultado = await BuffetsService.obtenerBuffets(filtrosValidados, session);
+    const resultado = await BuffetsService.obtenerBuffets(filtrosValidados, sessionCompatible);
 
     return NextResponse.json(resultado);
 
@@ -79,28 +79,20 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-buffets/buffets - Crear un nuevo buffet
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     
-    // Determinar user_id: usar el enviado si existe, sino el de la sesión actual
+    // Determinar user_id: usar el enviado si existe, sino el del usuario actual
     const bodyConUserId = {
       ...body,
-      user_id: body.user_id || session.user.id
+      user_id: body.user_id || user.id
     };
     
     // Validar datos

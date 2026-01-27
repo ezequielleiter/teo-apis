@@ -1,22 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth-options';
 import { obtenerPromoPorId, actualizarPromo, eliminarPromo } from '@/lib/promos';
+import { requireAuth } from '@/lib/helpers/jwt-auth';
+import { obtenerBuffetsPorCliente } from '@/lib/buffets';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    const promo = await obtenerPromoPorId(id, session);
+    const promo = await obtenerPromoPorId(id, sessionCompatible);
     
     if (!promo) {
       return NextResponse.json({ error: 'Promoción no encontrada' }, { status: 404 });
@@ -36,16 +39,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
     const body = await request.json();
 
-    const promoActualizada = await actualizarPromo(id, body, session);
+    const promoActualizada = await actualizarPromo(id, body, sessionCompatible);
 
     return NextResponse.json({ 
       promo: promoActualizada,
@@ -64,14 +70,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    await eliminarPromo(id, session);
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
+    const userBuffet = await obtenerBuffetsPorCliente({}, authResult);
+    if (!userBuffet.buffets || userBuffet.buffets.length === 0) {
+      return NextResponse.json({
+        error: 'No se encontró buffet asociado al usuario administrador',
+      }, { status: 403 });
+    }
+    const buffet = userBuffet.buffets[0];
+    if (!buffet._id) {
+      return NextResponse.json({
+        error: 'El buffet asociado no tiene un _id válido',
+      }, { status: 500 });
+    }
+    await eliminarPromo(id, sessionCompatible, { _id: buffet._id.toString() });
 
     return NextResponse.json({ 
       message: 'Promoción eliminada exitosamente' 

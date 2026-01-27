@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { ZodError } from 'zod';
-import { authOptions } from '../../../../lib/auth-options';
 import { ProductosService } from '../../../../lib/productos';
 import { 
   crearProductoSchema,
   filtrarProductosSchema 
 } from '../../../../types/productos';
+import { requireAuth } from '../../../../lib/helpers/jwt-auth';
+import { UserRole } from '../../../../types/auth';
 
 // GET /api/admin-buffets/productos - Obtener todos los productos
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     
@@ -63,8 +55,17 @@ export async function GET(request: NextRequest) {
     // Validar parámetros
     const filtrosValidados = filtrarProductosSchema.parse(filtros);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as UserRole // Cast para compatibilidad
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Obtener productos
-    const resultado = await ProductosService.obtenerProductos(filtrosValidados, session);
+    const resultado = await ProductosService.obtenerProductos(filtrosValidados, sessionCompatible);
 
     return NextResponse.json(resultado);
 
@@ -98,35 +99,36 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-buffets/productos - Crear un nuevo producto
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
+    if (authResult instanceof Response) {
+      return authResult;
     }
-
-    if (!['admin', 'superadmin'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Permisos insuficientes' },
-        { status: 403 }
-      );
-    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     
     // Agregar user_id del usuario actual
     const bodyConUserId = {
       ...body,
-      user_id: session.user.id
+      user_id: user.id
     };
     
     // Validar datos
     const datosValidados = crearProductoSchema.parse(bodyConUserId);
 
+    // Crear objeto compatible con Session
+    const sessionCompatible = { 
+      user: {
+        ...user,
+        role: user.role as UserRole // Cast para compatibilidad
+      }, 
+      expires: new Date().toISOString() 
+    };
+
     // Crear producto
-    const nuevoProducto = await ProductosService.crearProducto(datosValidados, session);
+    const nuevoProducto = await ProductosService.crearProducto(datosValidados, sessionCompatible);
 
     return NextResponse.json(
       { 

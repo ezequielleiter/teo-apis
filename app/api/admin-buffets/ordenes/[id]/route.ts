@@ -1,22 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth-options';
 import { obtenerOrdenPorId, actualizarOrden, eliminarOrden } from '@/lib/ordenes';
+import { requireAuth } from '@/lib/helpers/jwt-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    const orden = await obtenerOrdenPorId(id, session);
+    const orden = await obtenerOrdenPorId(id, sessionCompatible);
     
     if (!orden) {
       return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
@@ -36,16 +38,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
     const body = await request.json();
 
-    const ordenActualizada = await actualizarOrden(id, body, session);
+    const ordenActualizada = await actualizarOrden(id, body, sessionCompatible);
 
     return NextResponse.json({ 
       orden: ordenActualizada,
@@ -64,14 +69,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (authResult instanceof Response) {
+      return authResult;
     }
+    
+    const { user } = authResult;
+    const sessionCompatible = { user };
 
-    await eliminarOrden(id, session);
+    await eliminarOrden(id, sessionCompatible);
 
     return NextResponse.json({ 
       message: 'Orden eliminada exitosamente' 
