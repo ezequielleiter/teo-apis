@@ -27,9 +27,7 @@ class TeoAuthClient {
 
   // Login usando endpoint personalizado para cross-domain
   async authenticate(email, password) {
-    try {
-      console.log("Iniciando autenticación...");
-      
+    try {      
       const loginResponse = await fetch(`${this.baseUrl}/api/auth/login-external`, {
         method: 'POST',
         headers: {

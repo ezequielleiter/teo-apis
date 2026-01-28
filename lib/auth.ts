@@ -146,14 +146,11 @@ export class UserService {
 
   static async hasSuperAdmin(): Promise<boolean> {
     try {
-      console.log("PASAA");
       const collection = await getCollection("users");
-      console.log("AA", collection);
       
       const superAdminCount = await collection.countDocuments({ 
         role: UserRole.SUPERADMIN 
       });
-      console.log(superAdminCount);
       
       return superAdminCount > 0;
     } catch (error) {

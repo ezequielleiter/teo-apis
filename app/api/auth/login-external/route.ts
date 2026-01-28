@@ -31,11 +31,8 @@ export async function POST(request: NextRequest) {
     // Find buffet_id for admin users
     let buffet_id: string | undefined = undefined;
     if (user.role === 'admin') {
-      console.log('Buscando buffet para usuario admin:', user._id);
       const buffets = await BuffetsService.obtenerBuffets({ user_id: user._id });
-      console.log('Buffets encontrados:', buffets.buffets.length, buffets.buffets.map(b => ({ id: b._id, user_id: b.user_id })));
       buffet_id = buffets.buffets.length > 0 ? buffets.buffets[0]._id?.toString() : undefined;
-      console.log('buffet_id asignado:', buffet_id);
     }
 
     // Create JWT token
@@ -49,7 +46,6 @@ export async function POST(request: NextRequest) {
       .setExpirationTime('30d')
       .setIssuedAt()
       .sign(secret);
-    console.log("ACAAA");
     
     return NextResponse.json({
       success: true,

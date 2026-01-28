@@ -10,9 +10,9 @@ export async function middleware(request: NextRequest) {
   const requestOrigin = request.headers.get('origin');
   const requestUrl = new URL(request.url);
   const sameOrigin = !requestOrigin; // Si no hay origin header, es same-origin
-
   // Determinar si el origen está permitido
-  const isOriginAllowed = sameOrigin || originsArray.includes(requestOrigin || '') || originsArray.includes('*');
+  const isOriginAllowed = sameOrigin || originsArray.includes(requestOrigin) || originsArray.includes('*');
+  
   const corsOrigin = isOriginAllowed ? (requestOrigin || requestUrl.origin) : 'null';
 
   // Crear respuesta con headers CORS

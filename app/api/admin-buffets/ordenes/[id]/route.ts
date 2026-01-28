@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { obtenerOrdenPorId, actualizarOrden, eliminarOrden } from '@/lib/ordenes';
 import { requireAuth } from '@/lib/helpers/jwt-auth';
+import { obtenerBuffetsPorCliente } from '@/lib/buffets';
 
 export async function GET(
   request: NextRequest,
@@ -38,6 +39,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    
     const authResult = await requireAuth(request, ['admin', 'superadmin']);
     const { id } = await params;
     

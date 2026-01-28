@@ -12,7 +12,6 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-        console.log(session);
 
     if (!session?.user) {
       return NextResponse.json(

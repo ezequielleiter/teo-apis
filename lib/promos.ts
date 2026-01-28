@@ -3,7 +3,7 @@ import clientPromise from './mongodb';
 import { Promo, PromoConDetalles, CrearPromoData, FiltrarPromosData } from '../types/promos';
 import { BuffetsService } from './buffets';
 import { ProductosService } from './productos';
-import { addUserFilters } from './helpers/permissions';
+import { addUserFilters, validateUserPermissions } from './helpers/permissions';
 export class PromosService {
   private static async getCollection(): Promise<Collection<Promo>> {
     const client: MongoClient = await clientPromise;
@@ -311,7 +311,6 @@ export class PromosService {
   static async eliminarPromo(
     id: string, 
     session?: { user: { id: string; role: string } } | null,
-    buffet?: {_id: string}
   ): Promise<boolean> {
 
     const collection = await this.getCollection();
@@ -325,7 +324,7 @@ export class PromosService {
         if (!promo) {
           throw new Error('Promoción no encontrada');
         }
-        await this.validateUserPermissions(promo.buffet_id, session, buffet);
+        await validateUserPermissions(promo.buffet_id, session);
       }
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -349,36 +348,6 @@ export class PromosService {
       .toArray();
   }
 
-  // Validar permisos de usuario para un buffet específico
-  private static async validateUserPermissions(
-    buffet_id: string | undefined, 
-    session: { user: { id: string; role: string; buffet_id?: string } },
-    user_buffet?: {_id: string}
-  ): Promise<void> {
-
-    if (!buffet_id) {
-      throw new Error('ID de buffet requerido para validar permisos (buffet_id faltante en la promo)');
-    }
-
-    // Verificar si el usuario es superadmin
-    if (session.user?.role === 'superadmin') {
-      return; // Superadmin tiene acceso a todo
-    }
-
-    // Verificar si el usuario es admin del buffet específico
-    if (session.user?.role === 'admin') {
-      if (!user_buffet?._id) {
-        throw new Error('No se encontró buffet asociado al usuario administrador para validar permisos');
-      }
-      if (user_buffet._id.toString() === buffet_id) {
-        return; // Admin del buffet tiene acceso
-      } else {
-        throw new Error('El usuario administrador no tiene acceso a este buffet (mismatch de buffet_id)');
-      }
-    }
-
-    throw new Error('No tienes permisos para realizar esta acción en este buffet');
-  }
 }
 
 // Funciones exportadas para uso en las APIs

@@ -62,18 +62,6 @@ Sistema TEO APIs - Gestión de Registros
     */
 
     // Por ahora, registramos en consola y devolvemos éxito
-    console.log('Nuevo registro de centro de donación:');
-    console.log({
-      nombre,
-      apellido,
-      email,
-      telefono,
-      ubicacion,
-      fecha: new Date().toISOString()
-    });
-
-    console.log('Email a enviar a info@teocoop.site:');
-    console.log(emailContent);
 
     return NextResponse.json(
       { 

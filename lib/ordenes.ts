@@ -15,7 +15,7 @@ import { BuffetsService } from './buffets';
 import { EventosService } from './eventos';
 import { ProductosService } from './productos';
 import { PromosService } from './promos';
-import { addUserFilters } from './helpers/permissions';
+import { addUserFilters, validateUserPermissions } from './helpers/permissions';
 
 export class OrdenesService {
   private static async getCollection(): Promise<Collection<Orden>> {
@@ -388,7 +388,7 @@ export class OrdenesService {
 
       // Verificar permisos si se proporciona sessión
       if (session) {
-        await this.validateUserPermissions(buffet_id, session);
+        await validateUserPermissions(buffet_id, session);
       }
       
       const updateData = {
@@ -424,7 +424,7 @@ export class OrdenesService {
         if (!orden) {
           throw new Error('Orden no encontrada');
         }
-        await this.validateUserPermissions(orden.buffet_id, session);
+        await validateUserPermissions(orden.buffet_id, session);
       }
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -458,28 +458,6 @@ export class OrdenesService {
       .toArray();
   }
 
-  // Validar permisos de usuario para un buffet específico
-  private static async validateUserPermissions(
-    buffet_id: string | undefined, 
-    session: { user: { id: string; role: string } }
-  ): Promise<void> {
-    if (!buffet_id) {
-      throw new Error('ID de buffet requerido para validar permisos');
-    }
-
-    // Verificar si el usuario es superadmin
-    if (session.user?.role === 'superadmin') {
-      return; // Superadmin tiene acceso a todo
-    }
-
-    // Verificar si el usuario es admin del buffet específico
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (session.user?.role === 'admin' && (session.user as any)?.buffet_id === buffet_id) {
-      return; // Admin del buffet tiene acceso
-    }
-
-    throw new Error('No tienes permisos para realizar esta acción en este buffet');
-  }
 
   // Obtener estadísticas de órdenes
   static async obtenerEstadisticasOrdenes(buffet_id?: string, evento_id?: string): Promise<{

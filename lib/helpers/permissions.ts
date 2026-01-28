@@ -1,4 +1,5 @@
 import { UserRole } from '../../types/auth';
+import { obtenerBuffetsPorCliente } from '../buffets';
 
 // Tipo flexible para sesión que acepta tanto Session completa como parcial, o directamente un usuario
 type SessionLike = {
@@ -34,29 +35,35 @@ function extractUser(sessionOrUser: SessionLike): { id: string; role: string } |
  * @param resourceUserId - ID del usuario propietario del recurso
  * @returns boolean indicando si tiene permisos
  */
-export function validateUserPermissions(
-  sessionOrUser: SessionLike, 
-  resourceUserId?: string
-): boolean {
-  const user = extractUser(sessionOrUser);
-  
-  // Si no hay usuario, no hay permisos
-  if (!user) {
-    return false;
-  }
+export async function validateUserPermissions(
+    buffet_id: string | undefined, 
+    session: { user: { id: string; role: string; buffet_id?: string } },
+  ): Promise<void> {
+    const {buffets} = await obtenerBuffetsPorCliente({}, session)
+    const buffet = buffets[0]
+    if (!buffet_id) {
+      throw new Error('ID de buffet requerido para validar permisos (buffet_id faltante en la promo)');
+    }
 
-  // Si es superadmin, tiene permisos para todo
-  if (user.role === UserRole.SUPERADMIN) {
-    return true;
-  }
+    // Verificar si el usuario es superadmin
+    if (session.user?.role === 'superadmin') {
+      return; // Superadmin tiene acceso a todo
+    }
 
-  // Si es admin, solo puede editar sus propios recursos
-  if (user.role === UserRole.ADMIN && resourceUserId) {
-    return user.id === resourceUserId;
-  }
+    // Verificar si el usuario es admin del buffet específico
+    if (session.user?.role === 'admin') {
+      if (!buffet?._id) {
+        throw new Error('No se encontró buffet asociado al usuario administrador para validar permisos');
+      }
+      if (buffet._id.toString() === buffet_id) {
+        return; // Admin del buffet tiene acceso
+      } else {
+        throw new Error('El usuario administrador no tiene acceso a este buffet (mismatch de buffet_id)');
+      }
+    }
 
-  return false;
-}
+    throw new Error('No tienes permisos para realizar esta acción en este buffet');
+  }
 
 /**
  * Valida si un usuario puede crear un nuevo recurso

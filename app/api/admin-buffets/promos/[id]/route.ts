@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { obtenerPromoPorId, actualizarPromo, eliminarPromo } from '@/lib/promos';
 import { requireAuth } from '@/lib/helpers/jwt-auth';
-import { obtenerBuffetsPorCliente } from '@/lib/buffets';
 
 export async function GET(
   request: NextRequest,
@@ -79,19 +78,8 @@ export async function DELETE(
     
     const { user } = authResult;
     const sessionCompatible = { user };
-    const userBuffet = await obtenerBuffetsPorCliente({}, authResult);
-    if (!userBuffet.buffets || userBuffet.buffets.length === 0) {
-      return NextResponse.json({
-        error: 'No se encontró buffet asociado al usuario administrador',
-      }, { status: 403 });
-    }
-    const buffet = userBuffet.buffets[0];
-    if (!buffet._id) {
-      return NextResponse.json({
-        error: 'El buffet asociado no tiene un _id válido',
-      }, { status: 500 });
-    }
-    await eliminarPromo(id, sessionCompatible, { _id: buffet._id.toString() });
+
+    await eliminarPromo(id, sessionCompatible);
 
     return NextResponse.json({ 
       message: 'Promoción eliminada exitosamente' 
