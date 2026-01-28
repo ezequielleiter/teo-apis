@@ -163,6 +163,7 @@ export class OrdenesService {
       nota: data.nota,
       estado: data.estado,
       user_id: data.user_id,
+      cliente_nombre: data.cliente_nombre,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
