@@ -6,7 +6,8 @@ export const crearProductoSchema = z.object({
   user_id: z.string().min(1, 'El ID del usuario es obligatorio'),
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   valor: z.number().min(0, 'El valor debe ser mayor o igual a 0'),
-  descripcion: z.string().min(1, 'La descripción es obligatoria')
+  descripcion: z.string().min(1, 'La descripción es obligatoria'),
+  imagen: z.string().url().optional()
 });
 
 // Schema para filtros de búsqueda
@@ -32,6 +33,7 @@ export interface Producto {
   nombre: string;
   valor: number;
   descripcion: string;
+  imagen?: string;
   fechaCreacion: Date;
   fechaActualizacion: Date;
 }

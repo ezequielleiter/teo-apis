@@ -43,6 +43,7 @@ export class ProductosService {
       nombre: data.nombre,
       valor: data.valor,
       descripcion: data.descripcion,
+      imagen: data.imagen,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
