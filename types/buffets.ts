@@ -55,6 +55,7 @@ export interface Buffet {
     instagram?: string;
     facebook?: string;
     whatsapp?: string;
+    youtube?: string
   };
   logo?: string;
 }

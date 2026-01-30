@@ -1,6 +1,6 @@
 import { MongoClient, Db, Collection, ObjectId, Filter } from 'mongodb';
 import clientPromise from './mongodb';
-import { Evento, EventoConBuffet, CrearEventoData, FiltrarEventosData } from '../types/eventos';
+import { Evento, EventoConBuffet, CrearEventoData, ActualizarEventoData, FiltrarEventosData } from '../types/eventos';
 import { BuffetsService } from './buffets';
 import { addUserFilters } from './helpers/permissions';
 
@@ -288,6 +288,69 @@ export class EventosService {
       .sort({ fecha: 1 })
       .toArray();
   }
+
+  static async obtenerEventosPublic(
+    filtros: FiltrarEventosData = {},
+  ): Promise<{
+    eventos: Evento[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    const collection = await this.getCollection();
+    
+    // Construir query de MongoDB
+    const query: Record<string, unknown> = {};
+    
+    if (filtros.nombre) {
+      query.nombre = { $regex: filtros.nombre, $options: 'i' };
+    }
+    
+    if (filtros.buffet_id) {
+      try {
+        query.buffet_id = filtros.buffet_id;
+      } catch {
+        throw new Error('ID de buffet inválido');
+      }
+    }
+
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
+    }
+    
+    if (filtros.fecha_desde || filtros.fecha_hasta) {
+      query.fecha = {} as Record<string, Date>;
+      if (filtros.fecha_desde) {
+        (query.fecha as Record<string, Date>).$gte = new Date(filtros.fecha_desde);
+      }
+      if (filtros.fecha_hasta) {
+        (query.fecha as Record<string, Date>).$lte = new Date(filtros.fecha_hasta);
+      }
+    }
+
+    // Paginación
+    const limite = filtros.limite || 20;
+    const pagina = filtros.pagina || 1;
+    const skip = (pagina - 1) * limite;
+
+    // Ejecutar consultas en paralelo
+    const [eventos, total] = await Promise.all([
+      collection
+        .find(query)
+        .sort({ fecha: -1 })
+        .skip(skip)
+        .limit(limite)
+        .toArray(),
+      collection.countDocuments(query)
+    ]);
+
+    return {
+      eventos,
+      total,
+      pagina,
+      totalPaginas: Math.ceil(total / limite)
+    };
+  }
 }
 
 // Funciones exportadas para uso en las APIs
@@ -296,3 +359,4 @@ export const obtenerEventos = EventosService.obtenerEventos.bind(EventosService)
 export const obtenerEventoPorId = EventosService.obtenerEventoPorId.bind(EventosService);
 export const actualizarEvento = EventosService.actualizarEvento.bind(EventosService);
 export const eliminarEvento = EventosService.eliminarEvento.bind(EventosService);
+export const obtenerEventosPublic = EventosService.obtenerEventosPublic.bind(EventosService);
