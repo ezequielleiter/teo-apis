@@ -7,7 +7,17 @@ export const crearProductoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   valor: z.number().min(0, 'El valor debe ser mayor o igual a 0'),
   descripcion: z.string().min(1, 'La descripción es obligatoria'),
-  imagen: z.string().url().optional()
+  imagen: z.string().url().optional(),
+  disponible: z.boolean().optional().default(true)
+});
+
+// Schema para actualizar un producto
+export const actualizarProductoSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio').optional(),
+  valor: z.number().min(0, 'El valor debe ser mayor o igual a 0').optional(),
+  descripcion: z.string().min(1, 'La descripción es obligatoria').optional(),
+  imagen: z.string().url().optional(),
+  disponible: z.boolean().optional()
 });
 
 // Schema para filtros de búsqueda
@@ -23,6 +33,7 @@ export const filtrarProductosSchema = z.object({
 
 // Tipos TypeScript derivados de los schemas
 export type CrearProductoData = z.infer<typeof crearProductoSchema>;
+export type ActualizarProductoData = z.infer<typeof actualizarProductoSchema>;
 export type FiltrarProductosData = z.infer<typeof filtrarProductosSchema>;
 
 // Tipo para el producto completo (incluye campos generados automáticamente)
@@ -34,6 +45,7 @@ export interface Producto {
   valor: number;
   descripcion: string;
   imagen?: string;
+  disponible: boolean;
   fechaCreacion: Date;
   fechaActualizacion: Date;
 }

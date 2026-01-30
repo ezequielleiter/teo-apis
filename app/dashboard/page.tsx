@@ -208,6 +208,21 @@ export default function DashboardPage() {
   });
   const [createBuffetError, setCreateBuffetError] = useState('');
   const [createBuffetSuccess, setCreateBuffetSuccess] = useState('');
+
+  // Modal states for producto
+  const [showCreateProductoModal, setShowCreateProductoModal] = useState(false);
+  const [isCreatingProducto, setIsCreatingProducto] = useState(false);
+  const [createProductoForm, setCreateProductoForm] = useState({
+    buffet_id: '',
+    user_id: '',
+    nombre: '',
+    valor: 0,
+    descripcion: '',
+    imagen: '',
+    disponible: true
+  });
+  const [createProductoError, setCreateProductoError] = useState('');
+  const [createProductoSuccess, setCreateProductoSuccess] = useState('');
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
 
   // Edit and Delete states
@@ -1187,6 +1202,61 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCreateProductoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingProducto(true);
+    setCreateProductoError('');
+    setCreateProductoSuccess('');
+
+    try {
+      const productoData = {
+        ...createProductoForm,
+        user_id: session?.user?.id || createProductoForm.user_id
+      };
+
+      const response = await fetch('/api/admin-buffets/productos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(productoData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCreateProductoSuccess('Producto creado exitosamente');
+        setCreateProductoForm({
+          buffet_id: '',
+          user_id: session?.user?.id || '',
+          nombre: '',
+          valor: 0,
+          descripcion: '',
+          imagen: '',
+          disponible: true
+        });
+        
+        // Refrescar la lista de productos si estamos en esa vista
+        if (selectedApi === 'Productos') {
+          fetchProductos();
+        }
+        // Cerrar modal después de 2 segundos
+        setTimeout(() => {
+          setShowCreateProductoModal(false);
+          setCreateProductoSuccess('');
+        }, 2000);
+      } else {
+        setCreateProductoError(data.error || 'Error al crear producto');
+      }
+    } catch (error) {
+      console.error('Error creating producto:', error);
+      setCreateProductoError('Error interno del servidor');
+    } finally {
+      setIsCreatingProducto(false);
+    }
+  };
+
   // Delete handler for all resource types
   const handleDelete = async () => {
     if (!selectedItem) return;
@@ -1512,6 +1582,14 @@ export default function DashboardPage() {
                       user_id: session?.user?.role === 'admin' ? session.user.id : ''
                     }));
                     setShowCreateBuffetModal(true);
+                  } else if (selectedApi === 'Productos') {
+                    // Configurar user_id inicial
+                    setCreateProductoForm(prev => ({
+                      ...prev,
+                      user_id: session?.user?.id || '',
+                      buffet_id: '' // Se debe seleccionar
+                    }));
+                    setShowCreateProductoModal(true);
                   }
                   // Agregar más casos para otros tipos en el futuro
                 }}
@@ -2002,6 +2080,182 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Modal de Crear Producto */}
+      {showCreateProductoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Crear Nuevo Producto</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateProductoModal(false);
+                    setCreateProductoError('');
+                    setCreateProductoSuccess('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateProductoSubmit} className="space-y-4">
+                {/* Buffet */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Buffet
+                  </label>
+                  <select
+                    required
+                    value={createProductoForm.buffet_id}
+                    onChange={(e) => setCreateProductoForm(prev => ({ ...prev, buffet_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">Seleccionar buffet...</option>
+                    {buffets.map((buffet) => (
+                      <option key={buffet._id} value={buffet._id}>
+                        {buffet.nombre} - {buffet.lugar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nombre */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Nombre del Producto
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createProductoForm.nombre}
+                    onChange={(e) => setCreateProductoForm(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="Ej: Pizza Margherita"
+                  />
+                </div>
+
+                {/* Valor */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Valor
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={createProductoForm.valor}
+                    onChange={(e) => setCreateProductoForm(prev => ({ ...prev, valor: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={createProductoForm.descripcion}
+                    onChange={(e) => setCreateProductoForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                    placeholder="Describe el producto..."
+                  />
+                </div>
+
+                {/* Imagen */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Imagen (URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={createProductoForm.imagen}
+                    onChange={(e) => setCreateProductoForm(prev => ({ ...prev, imagen: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="URL de la imagen (opcional)"
+                  />
+                </div>
+
+                {/* Disponible */}
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={createProductoForm.disponible}
+                      onChange={(e) => setCreateProductoForm(prev => ({ ...prev, disponible: e.target.checked }))}
+                      className="text-blue-500 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Disponible
+                    </span>
+                  </label>
+                </div>
+
+                {/* Error Message */}
+                {createProductoError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-red-700 dark:text-red-400">{createProductoError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {createProductoSuccess && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.41,10.09L6,11.5L11,16.5Z"/>
+                      </svg>
+                      <span className="text-sm text-green-700 dark:text-green-400">{createProductoSuccess}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateProductoModal(false);
+                      setCreateProductoError('');
+                      setCreateProductoSuccess('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingProducto || !createProductoForm.buffet_id}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    {isCreatingProducto ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creando...
+                      </>
+                    ) : (
+                      'Crear Producto'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Editar */}
       {showEditModal && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -2175,7 +2429,7 @@ export default function DashboardPage() {
                         className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
                       />
                     </div>
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Categoría
                       </label>
@@ -2186,7 +2440,7 @@ export default function DashboardPage() {
                         onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, categoria: e.target.value }))}
                         className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
                       />
-                    </div>
+                    </div> */}
                     <div>
                       <label className="flex items-center gap-2">
                         <input

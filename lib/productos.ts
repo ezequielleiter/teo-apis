@@ -44,6 +44,7 @@ export class ProductosService {
       valor: data.valor,
       descripcion: data.descripcion,
       imagen: data.imagen,
+      disponible: data.disponible ?? true,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
@@ -270,7 +271,7 @@ export class ProductosService {
   ): Promise<Producto[]> {
     const collection = await this.getCollection();
     
-    const query = { buffet_id };
+    const query = { buffet_id, disponible: true };
     
     return await collection
       .find(query)
