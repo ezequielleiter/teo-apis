@@ -51,6 +51,10 @@ export async function middleware(request: NextRequest) {
     return createCorsResponse(response);
   }
 
+  if (request.method === 'GET' && pathname.startsWith('/api/admin-buffets/buffet-menu')) {
+    const response = NextResponse.next();
+    return createCorsResponse(response);
+  } 
   // Permitir todas las rutas de NextAuth
   if (pathname.startsWith('/api/auth/')) {
     const response = NextResponse.next();

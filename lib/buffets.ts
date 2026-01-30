@@ -147,6 +147,21 @@ export class BuffetsService {
     }
   }
 
+    static async obtenerBuffetPorIdPublic(
+    id: string,
+  ): Promise<Buffet | null> {
+    const collection = await this.getCollection();
+    
+    try {
+      const objectId = new ObjectId(id);
+      const query = { _id: objectId };
+      
+      return await collection.findOne(query as unknown as Filter<Buffet>);
+    } catch {
+      throw new Error('ID de buffet inválido');
+    }
+  }
+
   // Actualizar un buffet
   static async actualizarBuffet(
     id: string, 
@@ -218,3 +233,4 @@ export const obtenerBuffetPorId = BuffetsService.obtenerBuffetPorId.bind(Buffets
 export const actualizarBuffet = BuffetsService.actualizarBuffet.bind(BuffetsService);
 export const eliminarBuffet = BuffetsService.eliminarBuffet.bind(BuffetsService);
 export const obtenerBuffetsPorCliente = BuffetsService.obtenerBuffetsPorCliente.bind(BuffetsService);
+export const obtenerBuffetPorIdPublic = BuffetsService.obtenerBuffetPorIdPublic.bind(BuffetsService);

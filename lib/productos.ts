@@ -265,6 +265,19 @@ export class ProductosService {
       .toArray();
   }
 
+    static async obtenerProductosPorBuffetPublic(
+    buffet_id: string,
+  ): Promise<Producto[]> {
+    const collection = await this.getCollection();
+    
+    const query = { buffet_id };
+    
+    return await collection
+      .find(query)
+      .sort({ nombre: 1 })
+      .toArray();
+  }
+
   // Obtener estadísticas de productos por buffet
   static async obtenerEstadisticasProductos(
     buffet_id?: string,
@@ -321,3 +334,4 @@ export const obtenerProductos = ProductosService.obtenerProductos.bind(Productos
 export const obtenerProductoPorId = ProductosService.obtenerProductoPorId.bind(ProductosService);
 export const actualizarProducto = ProductosService.actualizarProducto.bind(ProductosService);
 export const eliminarProducto = ProductosService.eliminarProducto.bind(ProductosService);
+export const obtenerProductosPorBuffetPublic = ProductosService.obtenerProductosPorBuffetPublic.bind(ProductosService)

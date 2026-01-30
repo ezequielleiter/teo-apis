@@ -214,6 +214,66 @@ export class PromosService {
     };
   }
 
+   static async obtenerPromosPublic(
+    filtros: FiltrarPromosData = {},
+  ): Promise<{
+    promos: PromoConDetalles[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    const collection = await this.getCollection();
+    
+    // Construir query de MongoDB
+    const query: Record<string, unknown> = {};
+    
+    if (filtros.buffet_id) {
+      query.buffet_id = filtros.buffet_id;
+    }
+    
+    if (filtros.nombre) {
+      query.nombre = { $regex: filtros.nombre, $options: 'i' };
+    }
+    
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
+    }
+    
+    if (filtros.valor_min !== undefined || filtros.valor_max !== undefined) {
+      query.valor = {} as Record<string, number>;
+      if (filtros.valor_min !== undefined) {
+        (query.valor as Record<string, number>).$gte = filtros.valor_min;
+      }
+      if (filtros.valor_max !== undefined) {
+        (query.valor as Record<string, number>).$lte = filtros.valor_max;
+      }
+    }
+    
+    // Paginación
+    const limite = filtros.limite || 20;
+    const pagina = filtros.pagina || 1;
+    const skip = (pagina - 1) * limite;
+
+    // Ejecutar consultas en paralelo
+    const [promos, total] = await Promise.all([
+      collection
+        .find(query)
+        .sort({ fechaCreacion: -1 })
+        .skip(skip)
+        .limit(limite)
+        .toArray(),
+      collection.countDocuments(query)
+    ]);
+
+
+    return {
+      promos,
+      total,
+      pagina,
+      totalPaginas: Math.ceil(total / limite)
+    };
+  }
+
   // Obtener una promo por ID
   static async obtenerPromoPorId(
     id: string, 
@@ -356,3 +416,4 @@ export const obtenerPromos = PromosService.obtenerPromos.bind(PromosService);
 export const obtenerPromoPorId = PromosService.obtenerPromoPorId.bind(PromosService);
 export const actualizarPromo = PromosService.actualizarPromo.bind(PromosService);
 export const eliminarPromo = PromosService.eliminarPromo.bind(PromosService);
+export const obtenerPromosPublic = PromosService.obtenerPromosPublic.bind(PromosService);
