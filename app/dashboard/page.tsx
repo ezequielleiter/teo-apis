@@ -35,6 +35,12 @@ interface Buffet {
   descripcion: string;
   fechaCreacion: string;
   fechaActualizacion: string;
+  redes_sociales?: {
+    instagram?: string;
+    facebook?: string;
+    whatsapp?: string;
+  };
+  logo?: string;
 }
 
 interface Evento {
@@ -192,7 +198,13 @@ export default function DashboardPage() {
     nombre: '',
     lugar: '',
     descripcion: '',
-    user_id: ''
+    user_id: '',
+    redes_sociales: {
+      instagram: '',
+      facebook: '',
+      whatsapp: ''
+    },
+    logo: ''
   });
   const [createBuffetError, setCreateBuffetError] = useState('');
   const [createBuffetSuccess, setCreateBuffetSuccess] = useState('');
@@ -1146,7 +1158,13 @@ export default function DashboardPage() {
           nombre: '', 
           lugar: '', 
           descripcion: '', 
-          user_id: session?.user?.role === 'admin' ? session.user.id : ''
+          user_id: session?.user?.role === 'admin' ? session.user.id : '',
+          redes_sociales: {
+            instagram: '',
+            facebook: '',
+            whatsapp: ''
+          },
+          logo: ''
         });
         
         // Refrescar la lista de buffets si estamos en esa vista
@@ -1856,6 +1874,59 @@ export default function DashboardPage() {
                   />
                 </div>
 
+                {/* Redes Sociales */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Redes Sociales
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      value={createBuffetForm.redes_sociales.instagram}
+                      onChange={(e) => setCreateBuffetForm(prev => ({
+                        ...prev,
+                        redes_sociales: { ...prev.redes_sociales, instagram: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="Instagram URL (opcional)"
+                    />
+                    <input
+                      type="url"
+                      value={createBuffetForm.redes_sociales.facebook}
+                      onChange={(e) => setCreateBuffetForm(prev => ({
+                        ...prev,
+                        redes_sociales: { ...prev.redes_sociales, facebook: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="Facebook URL (opcional)"
+                    />
+                    <input
+                      type="url"
+                      value={createBuffetForm.redes_sociales.whatsapp}
+                      onChange={(e) => setCreateBuffetForm(prev => ({
+                        ...prev,
+                        redes_sociales: { ...prev.redes_sociales, whatsapp: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="WhatsApp URL (opcional)"
+                    />
+                  </div>
+                </div>
+
+                {/* Logo */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Logo
+                  </label>
+                  <input
+                    type="url"
+                    value={createBuffetForm.logo}
+                    onChange={(e) => setCreateBuffetForm(prev => ({ ...prev, logo: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="URL del logo (opcional)"
+                  />
+                </div>
+
                 {/* Error Message */}
                 {createBuffetError && (
                   <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
@@ -2023,6 +2094,55 @@ export default function DashboardPage() {
                         value={editForm.descripcion || ''}
                         onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, descripcion: e.target.value }))}
                         className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Redes Sociales
+                      </label>
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          value={editForm.redes_sociales?.instagram || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_sociales: { ...prev.redes_sociales, instagram: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="Instagram URL (opcional)"
+                        />
+                        <input
+                          type="url"
+                          value={editForm.redes_sociales?.facebook || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_sociales: { ...prev.redes_sociales, facebook: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="Facebook URL (opcional)"
+                        />
+                        <input
+                          type="url"
+                          value={editForm.redes_sociales?.whatsapp || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_sociales: { ...prev.redes_sociales, whatsapp: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="WhatsApp URL (opcional)"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Logo
+                      </label>
+                      <input
+                        type="url"
+                        value={editForm.logo || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, logo: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                        placeholder="URL del logo (opcional)"
                       />
                     </div>
                   </>
