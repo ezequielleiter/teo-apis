@@ -42,6 +42,9 @@ export class EventosService {
       fecha: new Date(data.fecha),
       buffet_id: data.buffet_id,
       user_id: data.user_id,
+      imagen: data.imagen,
+      descripcion: data.descripcion,
+      redes_artista: data.redes_artista,
       fechaCreacion: new Date(),
       fechaActualizacion: new Date()
     };
@@ -190,7 +193,7 @@ export class EventosService {
   // Actualizar un evento
   static async actualizarEvento(
     id: string, 
-    data: Partial<CrearEventoData>,
+    data: Partial<ActualizarEventoData>,
     session?: { user: { id: string; role: string } } | null
   ): Promise<EventoConBuffet | null> {
     // Si se está actualizando el buffet_id, validar que existe
@@ -222,6 +225,18 @@ export class EventosService {
       }
       if (data.user_id) {
         datosActualizacion.user_id = data.user_id;
+      }
+      if (data.nombre !== undefined) {
+        datosActualizacion.nombre = data.nombre;
+      }
+      if (data.imagen !== undefined) {
+        datosActualizacion.imagen = data.imagen;
+      }
+      if (data.descripcion !== undefined) {
+        datosActualizacion.descripcion = data.descripcion;
+      }
+      if (data.redes_artista !== undefined) {
+        datosActualizacion.redes_artista = data.redes_artista;
       }
 
       await collection.updateOne(

@@ -50,8 +50,6 @@ interface Evento {
   fecha_inicio: string;
   fecha_fin: string;
   descripcion: string;
-  capacidad: number;
-  estado: 'planificado' | 'en_curso' | 'finalizado' | 'cancelado';
   fechaCreacion: string;
   fechaActualizacion: string;
 }
@@ -223,6 +221,26 @@ export default function DashboardPage() {
   });
   const [createProductoError, setCreateProductoError] = useState('');
   const [createProductoSuccess, setCreateProductoSuccess] = useState('');
+
+  // Modal states for evento
+  const [showCreateEventoModal, setShowCreateEventoModal] = useState(false);
+  const [isCreatingEvento, setIsCreatingEvento] = useState(false);
+  const [createEventoForm, setCreateEventoForm] = useState({
+    nombre: '',
+    fecha: '',
+    buffet_id: '',
+    user_id: '',
+    imagen: '',
+    descripcion: '',
+    redes_artista: {
+      instagram: '',
+      facebook: '',
+      spotify: '',
+      youtube: ''
+    }
+  });
+  const [createEventoError, setCreateEventoError] = useState('');
+  const [createEventoSuccess, setCreateEventoSuccess] = useState('');
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
 
   // Edit and Delete states
@@ -578,7 +596,6 @@ export default function DashboardPage() {
             <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
             <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre</th>
             <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Buffet</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estado</th>
             <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha Inicio</th>
             <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
           </>
@@ -815,7 +832,6 @@ export default function DashboardPage() {
             <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">{evento._id.slice(-8).toUpperCase()}</td>
             <td className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{evento.nombre}</td>
             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{evento.buffet_id.slice(-8).toUpperCase()}</td>
-            <td className="px-6 py-4">{getEstadoBadge(evento.estado, 'evento')}</td>
             <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(evento.fecha_inicio)}</td>
             <td className="px-6 py-4 text-right">
               <div className="flex justify-end gap-2">
@@ -1257,6 +1273,66 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCreateEventoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingEvento(true);
+    setCreateEventoError('');
+    setCreateEventoSuccess('');
+
+    try {
+      const eventoData = {
+        ...createEventoForm,
+        user_id: session?.user?.id || createEventoForm.user_id
+      };
+
+      const response = await fetch('/api/admin-buffets/eventos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(eventoData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCreateEventoSuccess('Evento creado exitosamente');
+        setCreateEventoForm({
+          nombre: '',
+          fecha: '',
+          buffet_id: '',
+          user_id: session?.user?.id || '',
+          imagen: '',
+          descripcion: '',
+          redes_artista: {
+            instagram: '',
+            facebook: '',
+            spotify: '',
+            youtube: ''
+          }
+        });
+        
+        // Refrescar la lista de eventos si estamos en esa vista
+        if (selectedApi === 'Eventos') {
+          fetchEventos();
+        }
+        // Cerrar modal después de 2 segundos
+        setTimeout(() => {
+          setShowCreateEventoModal(false);
+          setCreateEventoSuccess('');
+        }, 2000);
+      } else {
+        setCreateEventoError(data.error || 'Error al crear evento');
+      }
+    } catch (error) {
+      console.error('Error creating evento:', error);
+      setCreateEventoError('Error interno del servidor');
+    } finally {
+      setIsCreatingEvento(false);
+    }
+  };
+
   // Delete handler for all resource types
   const handleDelete = async () => {
     if (!selectedItem) return;
@@ -1590,6 +1666,14 @@ export default function DashboardPage() {
                       buffet_id: '' // Se debe seleccionar
                     }));
                     setShowCreateProductoModal(true);
+                  } else if (selectedApi === 'Eventos') {
+                    // Configurar user_id inicial
+                    setCreateEventoForm(prev => ({
+                      ...prev,
+                      user_id: session?.user?.id || '',
+                      buffet_id: '' // Se debe seleccionar
+                    }));
+                    setShowCreateEventoModal(true);
                   }
                   // Agregar más casos para otros tipos en el futuro
                 }}
@@ -2256,6 +2340,212 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Modal de Crear Evento */}
+      {showCreateEventoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Crear Nuevo Evento</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateEventoModal(false);
+                    setCreateEventoError('');
+                    setCreateEventoSuccess('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEventoSubmit} className="space-y-4">
+                {/* Buffet */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Buffet
+                  </label>
+                  <select
+                    required
+                    value={createEventoForm.buffet_id}
+                    onChange={(e) => setCreateEventoForm(prev => ({ ...prev, buffet_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">Seleccionar buffet...</option>
+                    {buffets.map((buffet) => (
+                      <option key={buffet._id} value={buffet._id}>
+                        {buffet.nombre} - {buffet.lugar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nombre */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Nombre del Evento
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createEventoForm.nombre}
+                    onChange={(e) => setCreateEventoForm(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="Ej: Concierto de Rock"
+                  />
+                </div>
+
+                {/* Fecha */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Fecha y Hora
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={createEventoForm.fecha}
+                    onChange={(e) => setCreateEventoForm(prev => ({ ...prev, fecha: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={createEventoForm.descripcion}
+                    onChange={(e) => setCreateEventoForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors resize-none"
+                    placeholder="Describe el evento..."
+                  />
+                </div>
+
+                {/* Imagen */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Imagen (URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={createEventoForm.imagen}
+                    onChange={(e) => setCreateEventoForm(prev => ({ ...prev, imagen: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                    placeholder="URL de la imagen del evento (opcional)"
+                  />
+                </div>
+
+                {/* Redes del Artista */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Redes del Artista
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      value={createEventoForm.redes_artista.instagram}
+                      onChange={(e) => setCreateEventoForm(prev => ({
+                        ...prev,
+                        redes_artista: { ...prev.redes_artista, instagram: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="Instagram URL (opcional)"
+                    />
+                    <input
+                      type="url"
+                      value={createEventoForm.redes_artista.facebook}
+                      onChange={(e) => setCreateEventoForm(prev => ({
+                        ...prev,
+                        redes_artista: { ...prev.redes_artista, facebook: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="Facebook URL (opcional)"
+                    />
+                    <input
+                      type="url"
+                      value={createEventoForm.redes_artista.spotify}
+                      onChange={(e) => setCreateEventoForm(prev => ({
+                        ...prev,
+                        redes_artista: { ...prev.redes_artista, spotify: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="Spotify URL (opcional)"
+                    />
+                    <input
+                      type="url"
+                      value={createEventoForm.redes_artista.youtube}
+                      onChange={(e) => setCreateEventoForm(prev => ({
+                        ...prev,
+                        redes_artista: { ...prev.redes_artista, youtube: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                      placeholder="YouTube URL (opcional)"
+                    />
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {createEventoError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                      </svg>
+                      <span className="text-sm text-red-700 dark:text-red-400">{createEventoError}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {createEventoSuccess && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M11,16.5L18,9.5L16.59,8.09L11,13.67L7.41,10.09L6,11.5L11,16.5Z"/>
+                      </svg>
+                      <span className="text-sm text-green-700 dark:text-green-400">{createEventoSuccess}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateEventoModal(false);
+                      setCreateEventoError('');
+                      setCreateEventoSuccess('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingEvento || !createEventoForm.buffet_id}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    {isCreatingEvento ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creando...
+                      </>
+                    ) : (
+                      'Crear Evento'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Editar */}
       {showEditModal && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -2484,30 +2774,62 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Capacidad
+                        Imagen (URL)
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        value={editForm.capacidad || ''}
-                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, capacidad: parseInt(e.target.value) }))}
+                        type="url"
+                        value={editForm.imagen || ''}
+                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, imagen: e.target.value }))}
                         className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                        placeholder="URL de la imagen del evento (opcional)"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Estado
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Redes del Artista
                       </label>
-                      <select
-                        value={editForm.estado || ''}
-                        onChange={(e) => setEditForm((prev: Record<string, any>) => ({ ...prev, estado: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
-                      >
-                        <option value="planificado">Planificado</option>
-                        <option value="en_curso">En Curso</option>
-                        <option value="finalizado">Finalizado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          value={editForm.redes_artista?.instagram || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_artista: { ...prev.redes_artista, instagram: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="Instagram URL (opcional)"
+                        />
+                        <input
+                          type="url"
+                          value={editForm.redes_artista?.facebook || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_artista: { ...prev.redes_artista, facebook: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="Facebook URL (opcional)"
+                        />
+                        <input
+                          type="url"
+                          value={editForm.redes_artista?.spotify || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_artista: { ...prev.redes_artista, spotify: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="Spotify URL (opcional)"
+                        />
+                        <input
+                          type="url"
+                          value={editForm.redes_artista?.youtube || ''}
+                          onChange={(e) => setEditForm((prev: Record<string, any>) => ({
+                            ...prev,
+                            redes_artista: { ...prev.redes_artista, youtube: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                          placeholder="YouTube URL (opcional)"
+                        />
+                      </div>
                     </div>
                   </>
                 )}
