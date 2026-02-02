@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 
 // Schema para validar configuración de webhook
 const webhookConfigSchema = z.object({
@@ -94,11 +94,11 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof ZodError) {
       return NextResponse.json(
         { 
           error: 'Datos de entrada inválidos',
-          details: error.errors
+          details: error.issues
         },
         { status: 400 }
       );
