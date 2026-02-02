@@ -171,6 +171,91 @@ export class BannersService {
     };
   }
 
+  // Obtener banners públicos (sin sesión)
+  static async obtenerBannersPublic(
+    filtros: FiltrarBannersData = {},
+  ): Promise<{
+    banners: BannerConDetalles[];
+    total: number;
+    pagina: number;
+    totalPaginas: number;
+  }> {
+    const collection = await this.getCollection();
+    
+    // Construir query de MongoDB
+    const query: Record<string, unknown> = {};
+    
+    if (filtros.buffet_id) {
+      query.buffet_id = filtros.buffet_id;
+    }
+    
+    if (filtros.mensaje) {
+      query.mensaje = { $regex: filtros.mensaje, $options: 'i' };
+    }
+    
+    if (filtros.user_id) {
+      query.user_id = filtros.user_id;
+    }
+    
+    // Paginación
+    const limite = filtros.limite || 20;
+    const pagina = filtros.pagina || 1;
+    const saltar = (pagina - 1) * limite;
+
+    // Pipeline de agregación para obtener banners con datos del buffet
+    const pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: 'buffets',
+          localField: 'buffet_id',
+          foreignField: '_id',
+          as: 'buffetData'
+        }
+      },
+      {
+        $addFields: {
+          buffet: { $arrayElemAt: ['$buffetData', 0] }
+        }
+      },
+      {
+        $project: {
+          buffetData: 0
+        }
+      },
+      {
+        $sort: { fechaCreacion: -1 }
+      },
+      {
+        $facet: {
+          banners: [
+            { $skip: saltar },
+            { $limit: limite }
+          ],
+          total: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ];
+
+    const resultado = await collection.aggregate<{
+      banners: BannerConDetalles[];
+      total: { count: number }[];
+    }>(pipeline).toArray();
+
+    const banners = resultado[0]?.banners || [];
+    const total = resultado[0]?.total[0]?.count || 0;
+    const totalPaginas = Math.ceil(total / limite);
+
+    return {
+      banners,
+      total,
+      pagina,
+      totalPaginas
+    };
+  }
+
   // Actualizar banner
   static async actualizarBanner(
     id: string,
@@ -252,3 +337,5 @@ export async function eliminarBanner(
 ): Promise<void> {
   return BannersService.eliminarBanner(id, session);
 }
+
+export const obtenerBannersPublic = BannersService.obtenerBannersPublic.bind(BannersService);
