@@ -57,7 +57,8 @@ export class OrdenesService {
     for (const item of productos) {
       if (item.tipo === 'producto') {
         // Producto individual
-        const producto = await ProductosService.obtenerProductoPorId(item.id);
+        const producto = await ProductosService.obtenerProductoPorId(item.id, session);
+        
         if (producto) {
           productosExpandidos.push({
             producto_id: producto._id!,
