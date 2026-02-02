@@ -50,7 +50,6 @@ export async function PUT(
     const sessionCompatible = { user };
 
     const body = await request.json();
-    console.log(body);
     
     const ordenActualizada = await actualizarOrden(id, body, sessionCompatible);
 
