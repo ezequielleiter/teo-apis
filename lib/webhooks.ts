@@ -59,14 +59,12 @@ export class WebhookService {
     const webhookUrls = this.getWebhookUrls();
     
     if (webhookUrls.length === 0) {
-      console.log('No webhook URLs configured, skipping webhook');
       return;
     }
 
     const webhookPromises = webhookUrls.map(async (config) => {
       try {
         await this.deliverWebhook(config, payload);
-        console.log(`Webhook delivered successfully to ${config.url}`);
       } catch (error) {
         console.error(`Failed to deliver webhook to ${config.url}:`, error);
         // No lanzar error para no interrumpir el flujo de órdenes

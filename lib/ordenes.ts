@@ -79,14 +79,22 @@ export class OrdenesService {
         // Promo - expandir todos los productos que la componen
         const promo = await PromosService.obtenerPromoPorId(item.id, session);
         if (promo && promo.productosDetalles) {
+          // Calcular el precio unitario proporcional para cada producto de la promo
+          const valorTotalProductos = promo.productosDetalles.reduce((total, producto) => total + producto.valor, 0);
+          
           for (const productoPromo of promo.productosDetalles) {
+            // Calcular precio unitario proporcional basado en el valor original del producto
+            const precioUnitarioProporcional = valorTotalProductos > 0 
+              ? (productoPromo.valor / valorTotalProductos) * item.precio_unitario
+              : item.precio_unitario / promo.productosDetalles.length;
+            
             productosExpandidos.push({
               producto_id: productoPromo._id,
               nombre: productoPromo.nombre,
               descripcion: productoPromo.descripcion,
-              precio_unitario: item.precio_unitario / promo.productosDetalles.length, // Distribuir precio de promo
-              cantidad: item.cantidad,
-              subtotal: (item.precio_unitario / promo.productosDetalles.length) * item.cantidad,
+              precio_unitario: precioUnitarioProporcional,
+              cantidad: item.cantidad, // Cantidad de la promo ordenada
+              subtotal: precioUnitarioProporcional * item.cantidad,
               origen: {
                 tipo: 'promo',
                 id: promo._id!,
@@ -421,10 +429,16 @@ export class OrdenesService {
         await validateUserPermissions(buffet_id, session);
       }
       
-      const updateData = {
+      const updateData: Partial<Orden> = {
         ...data,
         fechaActualizacion: new Date()
       };
+
+      // Si se están actualizando los productos, recalcular productosExpandidos
+      if (data.productos) {
+        const productosExpandidos = await this.expandirProductos(data.productos, session);
+        updateData.productosExpandidos = productosExpandidos;
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await collection.updateOne({ _id: objectId } as any, { $set: updateData });

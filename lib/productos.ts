@@ -164,10 +164,8 @@ export class ProductosService {
       
       // Aplicar filtros de usuario según permisos
       query = addUserFilters(session || null, query);
-      console.log("query", query);
       
       const producto = await collection.findOne(query as unknown as Filter<Producto>);
-      console.log("producto", producto);
       
       if (!producto) {
         return null;
