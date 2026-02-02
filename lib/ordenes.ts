@@ -16,6 +16,7 @@ import { EventosService } from './eventos';
 import { ProductosService } from './productos';
 import { PromosService } from './promos';
 import { addUserFilters, validateUserPermissions } from './helpers/permissions';
+import { sendOrderCreatedWebhook, sendOrderUpdatedWebhook } from './webhooks';
 
 export class OrdenesService {
   private static async getCollection(): Promise<Collection<Orden>> {
@@ -183,7 +184,7 @@ export class OrdenesService {
       EventosService.obtenerEventoPorId(ordenCreada.evento_id)
     ]);
     
-    return {
+    const ordenCompleta: OrdenConDetalles = {
       ...ordenCreada,
       buffet: buffet ? {
         _id: buffet._id!,
@@ -196,6 +197,16 @@ export class OrdenesService {
         fecha: evento.fecha
       } : undefined
     };
+
+    // Enviar webhook de orden creada
+    try {
+      await sendOrderCreatedWebhook(ordenCompleta);
+    } catch (error) {
+      console.error('Error sending order created webhook:', error);
+      // No interrumpir el flujo si falla el webhook
+    }
+
+    return ordenCompleta;
   }
 
   // Obtener todas las órdenes con filtros opcionales
@@ -359,6 +370,11 @@ export class OrdenesService {
     
     try {
       const objectId = new ObjectId(id);
+      
+      // Obtener estado anterior para el webhook
+      const ordenAnterior = await this.obtenerOrdenPorId(id, session);
+      const estadoAnterior = ordenAnterior?.estado;
+      
       const datosActualizacion = {
         estado: data.estado,
         fechaActualizacion: new Date()
@@ -370,7 +386,19 @@ export class OrdenesService {
         { $set: datosActualizacion }
       );
 
-      return await this.obtenerOrdenPorId(id, session);
+      const ordenActualizada = await this.obtenerOrdenPorId(id, session);
+      
+      // Enviar webhook de orden actualizada si hay cambio de estado
+      if (ordenActualizada && estadoAnterior && estadoAnterior !== data.estado) {
+        try {
+          await sendOrderUpdatedWebhook(ordenActualizada, estadoAnterior);
+        } catch (error) {
+          console.error('Error sending order updated webhook:', error);
+          // No interrumpir el flujo si falla el webhook
+        }
+      }
+
+      return ordenActualizada;
     } catch {
       throw new Error('ID de orden inválido');
     }
