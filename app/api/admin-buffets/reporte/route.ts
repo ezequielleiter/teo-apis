@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       } else if (orden.forma_pago === 'efectivo') {
         totalEfectivo += orden.total;
       }
-      console.log(orden);
 
       // Preferir usar productosExpandidos (contiene producto_id, nombre y origen)
       if (orden.productosExpandidos && orden.productosExpandidos.length > 0) {
